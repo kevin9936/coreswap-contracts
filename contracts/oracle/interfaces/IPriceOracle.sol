@@ -1,58 +1,22 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
 interface IPriceOracle {
 
-    /// @notice                     Emits when new exchange router is added
-    /// @param exchangeRouter       Address of new exchange router
-    /// @param exchangeConnector    Address of exchange connector
-    event ExchangeConnectorAdded(address indexed exchangeRouter, address indexed exchangeConnector);
+    // Events
+    event NewAcceptableDelay(uint oldAcceptableDelay, uint newAcceptableDelay);
 
-    /// @notice                     Emits when an exchange router is removed
-    /// @param exchangeRouter       Address of removed exchange router
-    event ExchangeConnectorRemoved(address indexed exchangeRouter);
+    event AddPriceProxy(address indexed priceProxy);
 
-    /// @notice                     Emits when a price proxy is set
-    /// @param _token               Address of the token
-    /// @param _priceProxyAddress   Address of price proxy contract
-    event SetPriceProxy(address indexed _token, address indexed _priceProxyAddress);
+    event RemovePriceProxy(address indexed priceProxy);
 
-    /// @notice                     Emits when changes made to acceptable delay
-	event NewAcceptableDelay(uint oldAcceptableDelay, uint newAcceptableDelay);
+    event NewBestPriceProxy(address oldBestPriceProxy, address newBestPriceProxy);
 
-    /// @notice                     Emits when changes made to oracle native token
-	event NewOracleNativeToken(address indexed oldOracleNativeToken, address indexed newOracleNativeToken);
+    event NewTokenPricePair(address token, string oldPricePair, string newPricePair);
 
     // Read-only functions
-    
-    /// @notice                     Gives USD price proxy address for a token
-    /// @param _token          Address of the token
-    /// @return                     Address of price proxy contract
-    function ChainlinkPriceProxy(address _token) external view returns (address);
-
-    /// @notice                     Gives exchange connector address for an exchange router
-    /// @param _exchangeRouter      Address of exchange router
-    /// @return                     Address of exchange connector
-    function exchangeConnector(address _exchangeRouter) external view returns (address);
-
-    /// @notice                     Gives address of an exchange router from exchange routers list
-    /// @param _index               Index of exchange router
-    /// @return                     Address of exchange router
-    function exchangeRoutersList(uint _index) external view returns (address);
-
-    function getExchangeRoutersListLength() external view returns (uint);
 
     function acceptableDelay() external view returns (uint);
-
-    function oracleNativeToken() external view returns (address);
-
-    function equivalentOutputAmountByAverage(
-        uint _inputAmount,
-        uint _inputDecimals,
-        uint _outputDecimals,
-        address _inputToken,
-        address _outputToken
-    ) external view returns (uint);
 
     function equivalentOutputAmount(
         uint _inputAmount,
@@ -62,30 +26,32 @@ interface IPriceOracle {
         address _outputToken
     ) external view returns (uint);
 
-    function equivalentOutputAmountFromOracle(
-        uint _inputAmount,
-        uint _inputDecimals,
-        uint _outputDecimals,
-        address _inputToken,
-        address _outputToken
-    ) external view returns (uint);
+    function pricePairMap(address _token) external view returns(string memory);
 
-    function equivalentOutputAmountFromExchange(
-        address _exchangeRouter,
-        uint _inputAmount,
-        address _inputToken,
-        address _outputToken
-    ) external view returns (uint);
-    
+    function priceProxyIdxMap(address _priceOracle) external view returns(uint);
+
+    function getPriceProxyListLength() external view returns (uint);
+
+    function priceProxyList(uint idx) external view returns(address);
+
+    function bestPriceProxy() external view returns(address);
+
     // State-changing functions
-    
-    function addExchangeConnector(address _exchangeRouter, address _exchangeConnector) external;
 
-    function removeExchangeConnector(uint _exchangeRouterIndex) external;
+    function addPriceProxy(address _priceProxy) external;
 
-    function setPriceProxy(address _token, address _priceProxyAddress) external;
+    function removePriceProxy(address _priceProxy) external;
 
     function setAcceptableDelay(uint _acceptableDelay) external;
 
-    function setOracleNativeToken(address _oracleNativeToken) external;
+    function selectBestPriceProxy(address _priceProxy) external;
+
+    function addTokenPricePair(
+        address _token,
+        string memory _pairName
+    ) external;
+
+    function pauseOracle() external;
+
+    function unPauseOracle() external;
 }

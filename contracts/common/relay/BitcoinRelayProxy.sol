@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract BitcoinRelayProxy is TransparentUpgradeableProxy {
+contract BitcoinRelayProxy is ERC1967Proxy {
 
     constructor(
         address _logic,
-        address admin_,
         bytes memory _data
-    ) payable TransparentUpgradeableProxy(_logic, admin_, _data) {}
+    ) payable ERC1967Proxy(_logic, _data) {}
 
 }

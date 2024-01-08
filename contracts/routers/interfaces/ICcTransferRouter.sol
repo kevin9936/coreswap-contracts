@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
 interface ICcTransferRouter {
 
@@ -9,15 +9,13 @@ interface ICcTransferRouter {
 	/// @param lockerLockingScript  Locking script of the locker on bitcoin network
 	/// @param lockerScriptType     Script type of the locker locking script
 	/// @param lockerTargetAddress  Address of the locker on EVM based target chain
-	/// @param user                	Address of teleBTC recipient
+	/// @param user                	Address of coreBTC recipient
 	/// @param inputAmount         	Amount of tokens that user locked on source chain
 	/// @param receivedAmount      	Amount of tokens that user receives
-	/// @param speed               	Speed of the request (normal or instant)
-	/// @param teleporter          	Address of teleporter who submitted the request
-	/// @param teleporterFee       	Amount of fee that is paid to Teleporter (tx, relayer and teleporter fees)
-	/// @param relayFee       	   	Amount of fee that is paid to relay contract
+	/// @param porter          	Address of porter who submitted the request
+	/// @param porterFee       	Amount of fee that is paid to Porter (tx, relayer and porter fees)
 	/// @param protocolFee         	Amount of fee that is paid to the protocol
-	/// @param bitcoinTxId         	Address of teleporter who submitted the request
+	/// @param bitcoinTxId         	Address of porter who submitted the request
 	event CCTransfer(
 		bytes indexed lockerLockingScript,
 		uint lockerScriptType,
@@ -25,10 +23,8 @@ interface ICcTransferRouter {
 		address indexed user,
 		uint inputAmount,
 		uint receivedAmount,
-		uint indexed speed,
-		address teleporter,
-		uint teleporterFee,
-		uint relayFee,
+		address porter,
+		uint porterFee,
 		uint protocolFee,
 		bytes32 bitcoinTxId
 	);
@@ -51,10 +47,10 @@ interface ICcTransferRouter {
         address newLockers
     );
 
-    /// @notice                     Emits when changes made to TeleBTC address
-    event NewTeleBTC (
-        address oldTeleBTC, 
-        address newTeleBTC
+    /// @notice                     Emits when changes made to CoreBTC address
+    event NewCoreBTC (
+        address oldCoreBTC, 
+        address newCoreBTC
     );
 
     /// @notice                     Emits when changes made to protocol percentage fee
@@ -83,23 +79,21 @@ interface ICcTransferRouter {
 
 	function setLockers(address _lockers) external;
 
-	function setTeleBTC(address _teleBTC) external;
+	function setCoreBTC(address _coreBTC) external;
 
 	function setTreasury(address _treasury) external;
 
 	function setProtocolPercentageFee(uint _protocolPercentageFee) external;
 
-	function ccTransfer(
+
+	function lockProof(
 		// Bitcoin tx
-		bytes4 _version,
-		bytes memory _vin,
-		bytes calldata _vout,
-		bytes4 _locktime,
+		bytes calldata _tx,
 		// Bitcoin block number
 		uint256 _blockNumber,
 		// Merkle proof
 		bytes calldata _intermediateNodes,
 		uint _index,
 		bytes calldata _lockerLockingScript
-	) external payable returns (bool);
+	) external returns (bool);
 }

@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract CcTransferRouterProxy is ERC1967Proxy {
+contract CoreBTCProxy is ERC1967Proxy {
 
     constructor(
         address _logic,

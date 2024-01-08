@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
-import "@teleportdao/btc-evm-bridge/contracts/types/ScriptTypesEnum.sol";
+import "../../common/types/ScriptTypesEnum.sol";
 
 interface IBurnRouter {
 
@@ -11,9 +11,7 @@ interface IBurnRouter {
     /// @param userTargetAddress Address of the user
     /// @param userScript Script of user on Bitcoin
     /// @param scriptType Script type of the user (for bitcoin address)
-    /// @param inputAmount Amount of input token (0 if input token is teleBTC)
-    /// @param inputToken Address of token that will be exchanged for teleBTC (address(0) if input token is teleBTC)
-	/// @param teleBTCAmount amount of teleBTC that user sent OR Amount of teleBTC after exchanging
+    /// @param coreBTCAmount amount of coreBTC that user sent OR Amount of coreBTC after exchanging
     /// @param burntAmount that user will receive (after reducing fees)
 	/// @param lockerTargetAddress Address of Locker
 	/// @param requestIdOfLocker Index of request between Locker's burn requests
@@ -22,9 +20,7 @@ interface IBurnRouter {
 		address indexed userTargetAddress,
 		bytes userScript,
 		ScriptTypes scriptType,
-		uint inputAmount,
-		address inputToken,
-		uint teleBTCAmount, 
+		uint coreBTCAmount, 
 		uint burntAmount,
 		address lockerTargetAddress,
 		uint requestIdOfLocker,
@@ -45,13 +41,13 @@ interface IBurnRouter {
 
 	/// @notice  Emits when a locker gets slashed for withdrawing BTC without proper reason
 	/// @param _lockerTargetAddress	Locker's address on the target chain
-	/// @param _blockNumber	Block number of the malicious tx
+	/// @param blockHeight	Block number of the malicious tx
 	/// @param txId	Transaction ID of the malicious tx
 	/// @param amount Slashed amount
 	event LockerDispute(
         address _lockerTargetAddress,
 		bytes lockerLockingScript,
-    	uint _blockNumber,
+    	uint blockHeight,
         bytes32 txId,
 		uint amount
     );
@@ -81,10 +77,10 @@ interface IBurnRouter {
         address newLockers
     );
 
-	/// @notice Emits when TeleBTC address is updated
-    event NewTeleBTC(
-        address oldTeleBTC, 
-        address newTeleBTC
+	/// @notice Emits when CoreBTC address is updated
+    event NewCoreBTC(
+        address oldCoreBTC, 
+        address newCoreBTC
     );
 
 	/// @notice Emits when transfer deadline is updated
@@ -129,7 +125,7 @@ interface IBurnRouter {
 
 	function setLockers(address _lockers) external;
 
-	function setTeleBTC(address _teleBTC) external;
+	function setCoreBTC(address _coreBTC) external;
 
 	function setTreasury(address _treasury) external;
 
@@ -150,29 +146,15 @@ interface IBurnRouter {
 		bytes calldata _lockerLockingScript
 	) external returns (uint);
 
-    function ccExchangeAndBurn(
-        address _exchangeConnector,
-        uint[] calldata _amounts,
-        bool _isFixedToken,
-        address[] calldata _path,
-        uint256 _deadline, 
-        bytes memory _userScript,
-        ScriptTypes _scriptType,
-        bytes calldata _lockerLockingScript
-	) external returns (uint);
-
 	function burnProof(
-		bytes4 _version,
-		bytes memory _vin,
-		bytes memory _vout,
-		bytes4 _locktime,
-		uint256 _blockNumber,
+		bytes calldata _tx,
+		uint _blockNumber,
 		bytes memory _intermediateNodes,
 		uint _index,
 		bytes memory _lockerLockingScript,
         uint[] memory _burnReqIndexes,
         uint[] memory _voutIndexes
-	) external payable returns (bool);
+	) external returns (bool);
 
 	function disputeBurn(
 		bytes calldata _lockerLockingScript,
@@ -181,14 +163,10 @@ interface IBurnRouter {
 
     function disputeLocker(
         bytes memory _lockerLockingScript,
-        bytes4[] memory _versions, // [inputTxVersion, outputTxVersion]
-        bytes memory _inputVin,
-        bytes memory _inputVout,
-        bytes memory _outputVin,
-        bytes memory _outputVout,
-        bytes4[] memory _locktimes, // [inputTxLocktime, outputTxLocktime]
+		bytes calldata _inputTx,
+		bytes calldata _outputTx,
         bytes memory _inputIntermediateNodes,
         uint[] memory _indexesAndBlockNumbers 
 		// ^ [inputIndex, inputTxIndex, outputTxIndex, inputTxBlockNumber, outputTxBlockNumber]
-    ) external payable;
+    ) external;
 }

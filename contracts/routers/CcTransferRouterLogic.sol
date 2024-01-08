@@ -1,58 +1,71 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
 import "./CcTransferRouterStorage.sol";
 import "./interfaces/ICcTransferRouter.sol";
 import "../libraries/RequestHelper.sol";
 import "../lockers/interfaces/ILockers.sol";
-import "../erc20/interfaces/ITeleBTC.sol";
-import "@teleportdao/btc-evm-bridge/contracts/libraries/BitcoinHelper.sol";
-import "@teleportdao/btc-evm-bridge/contracts/relay/interfaces/IBitcoinRelay.sol";
+import "../erc20/interfaces/ICoreBTC.sol";
+import "../common/libraries/BitcoinHelper.sol";
+import "../common/relay/interfaces/IBitcoinRelay.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage, 
-    OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
+    Ownable2StepUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+
+    using BitcoinHelper for bytes;
 
     modifier nonZeroAddress(address _address) {
         require(_address != address(0), "CCTransferRouter: address is zero");
         _;
     }
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice                             Gives default params to initiate cc transfer router
     /// @param _startingBlockNumber         Requests that are included in a block older than _startingBlockNumber cannot be executed
     /// @param _protocolPercentageFee       Percentage amount of protocol fee (min: %0.01)
+    /// @param _version                     Version of op return payload
     /// @param _chainId                     Id of the underlying chain
     /// @param _appId                       Id of ccTransfer dApp
     /// @param _relay                       The Relay address to validate data from source chain
     /// @param _lockers                     Lockers' contract address
-    /// @param _teleBTC                     TeleportDAO BTC ERC20 token address
+    /// @param _coreBTC                     CoreDAO BTC ERC20 token address
     /// @param _treasury                    Address of treasury that collects protocol fees
     function initialize(
         uint _startingBlockNumber,
         uint _protocolPercentageFee,
+        uint _version,
         uint _chainId,
         uint _appId,
         address _relay,
         address _lockers,
-        address _teleBTC,
+        address _coreBTC,
         address _treasury
     ) public initializer {
-        OwnableUpgradeable.__Ownable_init();
+        Ownable2StepUpgradeable.__Ownable2Step_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+        UUPSUpgradeable.__UUPSUpgradeable_init();
 
+        version = _version;
         chainId = _chainId;
         appId = _appId;
         _setStartingBlockNumber(_startingBlockNumber);
         _setProtocolPercentageFee(_protocolPercentageFee);
         _setRelay(_relay);
         _setLockers(_lockers);
-        _setTeleBTC(_teleBTC);
+        _setCoreBTC(_coreBTC);
         _setTreasury(_treasury);
     }
 
     function renounceOwnership() public virtual override onlyOwner {}
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @notice Setter for starting block number
     function setStartingBlockNumber(uint _startingBlockNumber) external override onlyOwner {
@@ -87,11 +100,11 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
         _setInstantRouter(_instantRouter);
     }
 
-    /// @notice                             Setter for teleBTC
+    /// @notice                             Setter for coreBTC
     /// @dev                                Only owner can call this
-    /// @param _teleBTC                     TeleportDAO BTC ERC20 token address
-    function setTeleBTC(address _teleBTC) external override nonZeroAddress(_teleBTC) onlyOwner {
-        _setTeleBTC(_teleBTC);
+    /// @param _coreBTC                     CoreDAO BTC ERC20 token address
+    function setCoreBTC(address _coreBTC) external override nonZeroAddress(_coreBTC) onlyOwner {
+        _setCoreBTC(_coreBTC);
     }
 
     /// @notice                             Setter for treasury
@@ -142,11 +155,11 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
         instantRouter = _instantRouter;
     }
 
-    /// @notice                             Internal setter for teleBTC
-    /// @param _teleBTC                     TeleportDAO BTC ERC20 token address
-    function _setTeleBTC(address _teleBTC) private nonZeroAddress(_teleBTC) {
-        emit NewTeleBTC(teleBTC, _teleBTC);
-        teleBTC = _teleBTC;
+    /// @notice                             Internal setter for coreBTC
+    /// @param _coreBTC                     CoreDAO BTC ERC20 token address
+    function _setCoreBTC(address _coreBTC) private nonZeroAddress(_coreBTC) {
+        emit NewCoreBTC(coreBTC, _coreBTC);
+        coreBTC = _coreBTC;
     }
 
     /// @notice                             Internal setter for treasury
@@ -165,47 +178,38 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
     }
 
     /// @notice                             Executes the cross chain transfer request
-    /// @dev                                Validates the transfer request, then,
-    ///                                     if speed is 1, the request is instant
-    ///                                     which pays back the loan,
-    ///                                     if the speed is 0, it is a normal transfer
-    /// @param _version                     Version of the Bitcoin transaction
-    /// @param _vin                         Transaction inputs
-    /// @param _vout                        Transaction outputs
-    /// @param _locktime                    Bitcoin transaction locktime
+    /// @dev                                Validates the transfer request
+    /// @param _tx                          Bitcoin tx
     /// @param _blockNumber                 The block number of the request tx
     /// @param _intermediateNodes           Merkle proof for tx
     /// @param _index                       Index of tx in the block
     /// @param _lockerLockingScript         Locking script of locker that user has sent BTC to it
     /// @return                             True if the transfer is successful
-    function ccTransfer(
+    function lockProof(
         // Bitcoin tx
-        bytes4 _version,
-        bytes memory _vin,
-        bytes calldata _vout,
-        bytes4 _locktime,
+        bytes calldata _tx,
         // Bitcoin block number
         uint256 _blockNumber,
         // Merkle proof
         bytes calldata _intermediateNodes,
         uint _index,
         bytes calldata _lockerLockingScript
-    ) external payable nonReentrant override returns (bool) {
-        require(_msgSender() == instantRouter, "CCTransferRouter: invalid sender");
+    ) external nonReentrant override returns (bool) {
         require(_blockNumber >= startingBlockNumber, "CCTransferRouter: request is too old");
 
         // Finds txId on the source chain
-        bytes32 txId = BitcoinHelper.calculateTxId(_version, _vin, _vout, _locktime);
-        
+        bytes32 txId = BitcoinHelper.calculateTxId(_tx);
+
         require(
             !ccTransferRequests[txId].isUsed,
             "CCTransferRouter: request has been used before"
         );
 
-        require(_locktime == bytes4(0), "CCTransferRouter: lock time is non -zero");
+        (, , bytes29 voutView, uint32 lockTime) = _tx.extractTx();
+        require(lockTime == 0, "CCTransferRouter: lock time is non -zero");
 
         // Extracts information from the request
-        _saveCCTransferRequest(_lockerLockingScript, _vout, txId);
+        _saveCCTransferRequest(_lockerLockingScript, voutView, txId);
 
         // Checks if tx has been confirmed on source chain
         require(
@@ -219,8 +223,8 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
         );
 
         // Normal cc transfer request
-        (uint receivedAmount, uint _protocolFee, uint _teleporterFee) = _sendTeleBTC(
-            _lockerLockingScript, 
+        (uint receivedAmount, uint _protocolFee, uint _porterFee) = _sendCoreBTC(
+            _lockerLockingScript,
             txId
         );
         emit CCTransfer(
@@ -230,30 +234,28 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
             ccTransferRequests[txId].recipientAddress,
             ccTransferRequests[txId].inputAmount,
             receivedAmount,
-            ccTransferRequests[txId].speed,
             _msgSender(),
-            _teleporterFee,
-            0,
+            _porterFee,
             _protocolFee,
             txId
         );
         return true;
     }
 
-    /// @notice                             Sends minted teleBTC to the user
+    /// @notice                             Sends minted coreBTC to the user
     /// @param _lockerLockingScript         Locker's locking script
     /// @param _txId                        The transaction ID of the request
-    /// @return _remainedAmount             Amount of teleBTC that user receives after reducing fees
-    function _sendTeleBTC(bytes memory _lockerLockingScript, bytes32 _txId) private returns (
+    /// @return _remainedAmount             Amount of coreBTC that user receives after reducing fees
+    function _sendCoreBTC(bytes memory _lockerLockingScript, bytes32 _txId) private returns (
         uint _remainedAmount,
-        uint _protocolFee, 
-        uint _teleporterFee
+        uint _protocolFee,
+        uint _porterFee
     ) {
         // Gets remained amount after reducing fees
-        (_remainedAmount, _protocolFee, _teleporterFee) = _mintAndReduceFees(_lockerLockingScript, _txId);
+        (_remainedAmount, _protocolFee, _porterFee) = _mintAndReduceFees(_lockerLockingScript, _txId);
 
         // Transfers rest of tokens to recipient
-        ITeleBTC(teleBTC).transfer(
+        ICoreBTC(coreBTC).transfer(
             ccTransferRequests[_txId].recipientAddress,
             _remainedAmount
         );
@@ -262,11 +264,11 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
     /// @notice                             Parses and saves the request
     /// @dev                                Checks that user has sent BTC to a valid locker
     /// @param _lockerLockingScript         Locker's locking script
-    /// @param _vout                        The outputs of the tx
+    /// @param _voutView                    The outputs view of the tx
     /// @param _txId                        The txID of the request
     function _saveCCTransferRequest(
         bytes memory _lockerLockingScript,
-        bytes memory _vout,
+        bytes29 _voutView,
         bytes32 _txId
     ) private {
 
@@ -278,18 +280,19 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
         // Extracts value and opreturn data from request
         ccTransferRequest memory request; // Defines it to save gas
         bytes memory arbitraryData;
-        
-        (request.inputAmount, arbitraryData) = BitcoinHelper.parseValueAndDataHavingLockingScriptSmallPayload(
-            _vout, 
+
+        (request.inputAmount, arbitraryData) = BitcoinHelper.parseValueAndDataHavingLockingScript(
+            _voutView,
             _lockerLockingScript
         );
 
-        require(arbitraryData.length == 26, "CCTransferRouter: invalid len");
+        require(arbitraryData.length == 27, "CCTransferRouter: invalid len");
 
         // Checks that input amount is not zero
         require(request.inputAmount > 0, "CCTransferRouter: input amount is zero");
 
-        // Checks chain id and app id
+        // Checks version, chain id and app id
+        require(RequestHelper.parseVersion(arbitraryData) == version, "CCTransferRouter: version is not correct");
         require(RequestHelper.parseChainId(arbitraryData) == chainId, "CCTransferRouter: chain id is not correct");
         require(RequestHelper.parseAppId(arbitraryData) == appId, "CCTransferRouter: app id is not correct");
 
@@ -298,10 +301,8 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
         require(percentageFee <= MAX_PROTOCOL_FEE, "CCTransferRouter: percentage fee is out of range");
         request.fee = percentageFee*request.inputAmount/MAX_PROTOCOL_FEE;
 
-        // Parses recipient address and request speed
+        // Parses recipient address
         request.recipientAddress = RequestHelper.parseRecipientAddress(arbitraryData);
-        request.speed = RequestHelper.parseSpeed(arbitraryData);
-        require(request.speed == 0, "CCTransferRouter: speed is out of range");
 
         // Marks the request as used
         request.isUsed = true;
@@ -322,13 +323,10 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
         uint256 _blockNumber,
         bytes memory _intermediateNodes,
         uint _index
-    ) private returns (bool) {
-        // Calculates fee amount
-        uint feeAmount = IBitcoinRelay(relay).getBlockHeaderFee(_blockNumber, 0); // Index 0 is for finalized blocks
-        require(msg.value >= feeAmount, "CCTransferRouter: paid fee is not sufficient");
+    ) private view returns (bool) {
 
         // Calls relay contract (transfers all msg.value to it)
-        bytes memory data = Address.functionCallWithValue(
+        bytes memory data = Address.functionStaticCall(
             relay,
             abi.encodeWithSignature(
                 "checkTxProof(bytes32,uint256,bytes,uint256)",
@@ -336,48 +334,45 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
                 _blockNumber,
                 _intermediateNodes,
                 _index
-            ),
-            feeAmount
+            )
         );
-        
-        // Sends extra ETH back to _msgSender()
-        Address.sendValue(payable(_msgSender()), msg.value - feeAmount);
 
         return abi.decode(data, (bool));
     }
 
-    /// @notice                       Mints teleBTC by calling lockers contract
+    /// @notice                       Mints coreBTC by calling lockers contract
     /// @param _lockerLockingScript   Locker's locking script
     /// @param _txId                  The transaction ID of the request
-    /// @return _remainedAmount       Amount of teleBTC that user receives after reducing all fees (protocol, locker, teleporter)
+    /// @return _remainedAmount       Amount of coreBTC that user receives after reducing all fees (protocol, locker, porter)
     function _mintAndReduceFees(
         bytes memory _lockerLockingScript,
         bytes32 _txId
-    ) private returns (uint _remainedAmount, uint _protocolFee, uint _teleporterFee) {
+    ) private returns (uint _remainedAmount, uint _protocolFee, uint _porterFee) {
 
-        // Mints teleBTC for cc transfer router
+        // Mints coreBTC for cc transfer router
         // Lockers contract gets locker's fee
         uint mintedAmount = ILockers(lockers).mint(
             _lockerLockingScript,
             address(this),
+            _txId,
             ccTransferRequests[_txId].inputAmount
         );
 
         // Calculates fees
         _protocolFee = ccTransferRequests[_txId].inputAmount*protocolPercentageFee/MAX_PROTOCOL_FEE;
-        _teleporterFee = ccTransferRequests[_txId].fee;
+        _porterFee = ccTransferRequests[_txId].fee;
 
-        // Pays Teleporter fee
-        if (_teleporterFee > 0) {
-            ITeleBTC(teleBTC).transfer(_msgSender(), _teleporterFee);
+        // Pays Porter fee
+        if (_porterFee > 0) {
+            ICoreBTC(coreBTC).transfer(_msgSender(), _porterFee);
         }
 
         // Pays protocol fee
         if (_protocolFee > 0) {
-            ITeleBTC(teleBTC).transfer(treasury, _protocolFee);
+            ICoreBTC(coreBTC).transfer(treasury, _protocolFee);
         }
 
-        _remainedAmount = mintedAmount - _protocolFee - _teleporterFee;
+        _remainedAmount = mintedAmount - _protocolFee - _porterFee;
     }
 
     receive() external payable {}

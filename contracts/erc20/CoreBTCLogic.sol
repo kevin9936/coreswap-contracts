@@ -1,35 +1,37 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
-import "./interfaces/ITeleBTC.sol";
+import "./interfaces/ICoreBTC.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract CoreBTCLogic is ICoreBTC, ERC20Upgradeable, 
+    Ownable2StepUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
 
     modifier onlyBlackLister() {
-        require(isBlackLister(_msgSender()), "TeleBTC: only blacklisters");
+        require(isBlackLister(_msgSender()), "CoreBTC: only blacklisters");
         _;
     }
 
     modifier notBlackListed(address _account) {
-        require(!isBlackListed(_account), "TeleBTC: blacklisted");
+        require(!isBlackListed(_account), "CoreBTC: blacklisted");
         _;
     }
  
     modifier onlyMinter() {
-        require(isMinter(_msgSender()), "TeleBTC: only minters can mint");
+        require(isMinter(_msgSender()), "CoreBTC: only minters can mint");
         _;
     }
 
     modifier onlyBurner() {
-        require(isBurner(_msgSender()), "TeleBTC: only burners can burn");
+        require(isBurner(_msgSender()), "CoreBTC: only burners can burn");
         _;
     }
 
     modifier nonZeroValue(uint _value) {
-        require(_value > 0, "TeleBTC: value is zero");
+        require(_value > 0, "CoreBTC: value is zero");
         _;
     }
 
@@ -45,6 +47,10 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
     uint public epochLength; // Number of blocks in every epoch
     uint public lastEpoch; // Epoch number of last mint transaction
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         string memory _name,
         string memory _symbol
@@ -53,8 +59,9 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
             _name,
             _symbol
         );
-        OwnableUpgradeable.__Ownable_init();
+        Ownable2StepUpgradeable.__Ownable2Step_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+        UUPSUpgradeable.__UUPSUpgradeable_init();
 
         maxMintLimit = 10 ** 8;
         lastMintLimit = 10 ** 8;
@@ -63,7 +70,9 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
 
     function renounceOwnership() public virtual override onlyOwner {}
 
-    function decimals() public view virtual override(ERC20Upgradeable, ITeleBTC) returns (uint8) {
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    function decimals() public view virtual override(ERC20Upgradeable, ICoreBTC) returns (uint8) {
         return 8;
     }
 
@@ -88,7 +97,7 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
      * @return bool
      */
     function isBlackLister(address account) internal view returns (bool) {
-        require(account != address(0), "TeleBTC: zero address");
+        require(account != address(0), "CoreBTC: zero address");
         return blacklisters[account];
     }
 
@@ -97,7 +106,7 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
      * @return bool
      */
     function isBlackListed(address account) public view returns (bool) {
-        // require(account != address(0), "TeleBTC: zero address");
+        // require(account != address(0), "CoreBTC: zero address");
         return blacklisted[account];
     }
 
@@ -106,7 +115,7 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
      * @return bool
      */
     function isMinter(address account) internal view returns (bool) {
-        require(account != address(0), "TeleBTC: zero address");
+        require(account != address(0), "CoreBTC: zero address");
         return minters[account];
     }
 
@@ -114,7 +123,7 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
     /// @param  account        The account which intended to be checked
     /// @return bool
     function isBurner(address account) internal view returns (bool) {
-        require(account != address(0), "TeleBTC: zero address");
+        require(account != address(0), "CoreBTC: zero address");
         return burners[account];
     }
 
@@ -122,7 +131,7 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
     /// @dev                   Only owner can call this function
     /// @param  account        The account which intended to be added to blacklisters
     function addBlackLister(address account) external override onlyOwner {
-        require(!isBlackLister(account), "TeleBTC: already has role");
+        require(!isBlackLister(account), "CoreBTC: already has role");
         blacklisters[account] = true;
         emit BlackListerAdded(account);
     }
@@ -131,7 +140,7 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
     /// @dev                   Only owner can call this function
     /// @param  account        The account which intended to be removed from blacklisters
     function removeBlackLister(address account) external override onlyOwner {
-        require(isBlackLister(account), "TeleBTC: does not have role");
+        require(isBlackLister(account), "CoreBTC: does not have role");
         blacklisters[account] = false;
         emit BlackListerRemoved(account);
     }
@@ -140,7 +149,7 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
     /// @dev                   Only owner can call this function
     /// @param  account        The account which intended to be added to minters
     function addMinter(address account) external override onlyOwner {
-        require(!isMinter(account), "TeleBTC: already has role");
+        require(!isMinter(account), "CoreBTC: already has role");
         minters[account] = true;
         emit MinterAdded(account);
     }
@@ -149,7 +158,7 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
     /// @dev                   Only owner can call this function
     /// @param  account        The account which intended to be removed from minters
     function removeMinter(address account) external override onlyOwner {
-        require(isMinter(account), "TeleBTC: does not have role");
+        require(isMinter(account), "CoreBTC: does not have role");
         minters[account] = false;
         emit MinterRemoved(account);
     }
@@ -158,7 +167,7 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
     /// @dev                   Only owner can call this function
     /// @param  account        The account which intended to be added to burners
     function addBurner(address account) external override onlyOwner {
-        require(!isBurner(account), "TeleBTC: already has role");
+        require(!isBurner(account), "CoreBTC: already has role");
         burners[account] = true;
         emit BurnerAdded(account);
     }
@@ -167,12 +176,12 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
     /// @dev                   Only owner can call this function
     /// @param  account        The account which intended to be removed from burners
     function removeBurner(address account) external override onlyOwner {
-        require(isBurner(account), "TeleBTC: does not have role");
+        require(isBurner(account), "CoreBTC: does not have role");
         burners[account] = false;
         emit BurnerRemoved(account);
     }
 
-    /// @notice                Burns TeleBTC tokens of msg.sender
+    /// @notice                Burns CoreBTC tokens of msg.sender
     /// @dev                   Only burners can call this
     /// @param _amount         Amount of burnt tokens
     function burn(uint _amount) external nonReentrant onlyBurner override returns (bool) {
@@ -181,9 +190,9 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
         return true;
     }
 
-    /// @notice                Burns TeleBTC tokens of user
+    /// @notice                Burns CoreBTC tokens of user
     /// @dev                   Only owner can call this
-    /// @param _user           Address of user whose teleBTC is burnt
+    /// @param _user           Address of user whose coreBTC is burnt
     /// @param _amount         Amount of burnt tokens
     function ownerBurn(address _user, uint _amount) external nonReentrant onlyOwner override returns (bool) {
 
@@ -199,13 +208,13 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
         return true;
     }
 
-    /// @notice                Mints TeleBTC tokens for _receiver
+    /// @notice                Mints CoreBTC tokens for _receiver
     /// @dev                   Only minters can call this
     /// @param _receiver       Address of token's receiver
     /// @param _amount         Amount of minted tokens
     function mint(address _receiver, uint _amount) external nonReentrant onlyMinter override returns (bool) {
-        require(_amount <= maxMintLimit, "TeleBTC: mint amount is more than maximum mint limit");
-        require(checkAndReduceMintLimit(_amount), "TeleBTC: reached maximum mint limit");
+        require(_amount <= maxMintLimit, "CoreBTC: mint amount is more than maximum mint limit");
+        require(checkAndReduceMintLimit(_amount), "CoreBTC: reached maximum mint limit");
 
         _mint(_receiver, _amount);
         emit Mint(_msgSender(), _receiver, _amount);
@@ -247,9 +256,9 @@ contract TeleBTCLogic is ITeleBTC, ERC20Upgradeable, OwnableUpgradeable, Reentra
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 amount
+        uint256 /*amount*/
     ) internal view override {
-        require(!isBlackListed(from), "TeleBTC: from is blacklisted");
-        require(!isBlackListed(to), "TeleBTC: to is blacklisted");
+        require(!isBlackListed(from), "CoreBTC: from is blacklisted");
+        require(!isBlackListed(to), "CoreBTC: to is blacklisted");
     }
 }

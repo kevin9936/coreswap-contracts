@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
 import "./interfaces/ILockersStorage.sol";
 
@@ -15,13 +15,11 @@ contract LockersStorageStructure is ILockersStorage {
     address public constant NATIVE_TOKEN = address(1);
 
     // Public variables
-    address public override TeleportDAOToken;
-    address public override teleBTC;
+    address public override coreBTC;
     address public override ccBurnRouter;
     address public override exchangeConnector;
     address public override priceOracle;
 
-    uint public override minRequiredTDTLockedAmount;
     uint public override minRequiredTNTLockedAmount;
     uint public override lockerPercentageFee;
     uint public override collateralRatio;
@@ -30,6 +28,7 @@ contract LockersStorageStructure is ILockersStorage {
     uint public override totalNumberOfCandidates;
     uint public override totalNumberOfLockers;
 
+    address[] public override approvedLockers;                  // storage target address
     mapping(address => DataTypes.locker) public lockersMapping; // locker's target address -> locker structure
     mapping(address => uint) public lockerInactivationTimestamp;
     mapping(address => bool) public lockerLeavingAcceptance;

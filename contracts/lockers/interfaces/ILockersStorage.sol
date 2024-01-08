@@ -1,22 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
 import "../../types/DataTypes.sol";
 
 interface ILockersStorage {
     // Read-only functions
 
-    function TeleportDAOToken() external view returns(address);
-
-    function teleBTC() external view returns(address);
+    function coreBTC() external view returns(address);
 
     function ccBurnRouter() external view returns(address);
 
     function exchangeConnector() external view returns(address);
 
     function priceOracle() external view returns(address);
-
-    function minRequiredTDTLockedAmount() external view returns(uint);
 
     function minRequiredTNTLockedAmount() external view returns(uint);
 
@@ -31,7 +27,8 @@ interface ILockersStorage {
     function totalNumberOfCandidates() external view returns(uint);
 
     function totalNumberOfLockers() external view returns(uint);
-  
+
+    function approvedLockers(uint index) external view returns(address);
 }
 
 

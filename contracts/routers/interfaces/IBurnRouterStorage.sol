@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
-import "@teleportdao/btc-evm-bridge/contracts/types/ScriptTypesEnum.sol";
+import "../../common/types/ScriptTypesEnum.sol";
 
 interface IBurnRouterStorage {
 
@@ -13,7 +13,7 @@ interface IBurnRouterStorage {
 
 	function lockers() external view returns (address);
 
-	function teleBTC() external view returns (address);
+	function coreBTC() external view returns (address);
 
 	function treasury() external view returns (address);
 

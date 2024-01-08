@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
 import "./ILockersStorage.sol";
 
@@ -10,14 +10,12 @@ interface ILockers is ILockersStorage {
     event RequestAddLocker(
         address indexed lockerTargetAddress,
         bytes lockerLockingScript,
-        uint TDTLockedAmount,
         uint nativeTokenLockedAmount
     );
 
     event RevokeAddLockerRequest(
         address indexed lockerTargetAddress,
         bytes lockerLockingScript,
-        uint TDTLockedAmount,
         uint nativeTokenLockedAmount
     );
 
@@ -25,7 +23,6 @@ interface ILockers is ILockersStorage {
         address indexed lockerTargetAddress,
         uint indexed inactivationTimestamp,
         bytes lockerLockingScript,
-        uint TDTLockedAmount,
         uint nativeTokenLockedAmount,
         uint netMinted
     );
@@ -33,7 +30,6 @@ interface ILockers is ILockersStorage {
     event ActivateLocker(
         address indexed lockerTargetAddress,
         bytes lockerLockingScript,
-        uint TDTLockedAmount,
         uint nativeTokenLockedAmount,
         uint netMinted
     );
@@ -41,7 +37,6 @@ interface ILockers is ILockersStorage {
     event LockerAdded(
         address indexed lockerTargetAddress,
         bytes lockerLockingScript,
-        uint TDTLockedAmount,
         uint nativeTokenLockedAmount,
         uint addingTime
     );
@@ -49,7 +44,6 @@ interface ILockers is ILockersStorage {
     event LockerRemoved(
         address indexed lockerTargetAddress,
         bytes lockerLockingScript,
-        uint TDTUnlockedAmount,
         uint nativeTokenUnlockedAmount
     );
 
@@ -68,7 +62,7 @@ interface ILockers is ILockersStorage {
         address indexed lockerTargetAddress,
         address indexed liquidatorAddress,
         uint collateralAmount,
-        uint teleBTCAmount,
+        uint coreBTCAmount,
         uint liquidateTime
     );
 
@@ -76,7 +70,7 @@ interface ILockers is ILockersStorage {
         address indexed lockerTargetAddress,
         address indexed buyerAddress,
         uint slashingAmount,
-        uint teleBTCAmount,
+        uint coreBTCAmount,
         uint slashingTime
     );
 
@@ -97,6 +91,7 @@ interface ILockers is ILockersStorage {
     event MintByLocker(
         address indexed lockerTargetAddress,
         address indexed receiver,
+        bytes32 bitcoinTxId,
         uint mintedAmount,
         uint lockerFee,
         uint mintingTime
@@ -135,11 +130,6 @@ interface ILockers is ILockersStorage {
         uint newPriceWithDiscountRatio
     );
 
-    event NewMinRequiredTDTLockedAmount(
-        uint oldMinRequiredTDTLockedAmount,
-        uint newMinRequiredTDTLockedAmount
-    );
-
     event NewMinRequiredTNTLockedAmount(
         uint oldMinRequiredTNTLockedAmount,
         uint newMinRequiredTNTLockedAmount
@@ -155,19 +145,9 @@ interface ILockers is ILockersStorage {
         address newCCBurnRouter
     );
 
-    event NewExchangeConnector(
-        address oldExchangeConnector,
-        address newExchangeConnector
-    );
-
-    event NewTeleportDAOToken(
-        address oldTDTToken,
-        address newTDTToken
-    ); 
-
-    event NewTeleBTC(
-        address oldTeleBTC,
-        address newTeleBTC
+    event NewCoreBTC(
+        address oldCoreBTC,
+        address newCoreBTC
     );   
 
     event NewCollateralRatio(
@@ -200,6 +180,12 @@ interface ILockers is ILockersStorage {
 
     function isBurner(address account) external view returns(bool);
 
+    function getHealthFactor(address _lockerTargetAddress) external view returns(uint);
+
+    function getMaximumBuyableCollateral(address _lockerTargetAddress) external view returns (uint);
+
+    function getNeededCoreBTCToBuyCollateral(uint _collateralAmount) external view returns(uint);
+
     // State-changing functions
 
     function pauseLocker() external;
@@ -214,17 +200,13 @@ interface ILockers is ILockersStorage {
 
     function removeBurner(address _account) external;
 
-    function mint(bytes calldata _lockerLockingScript, address _receiver, uint _amount) external returns(uint);
+    function mint(bytes calldata _lockerLockingScript, address _receiver, bytes32 _txId, uint _amount) external returns(uint);
 
     function burn(bytes calldata _lockerLockingScript, uint256 _amount) external returns(uint);
-
-    function setTeleportDAOToken(address _tdtTokenAddress) external;
 
     function setLockerPercentageFee(uint _lockerPercentageFee) external;
 
     function setPriceWithDiscountRatio(uint _priceWithDiscountRatio) external;
-
-    function setMinRequiredTDTLockedAmount(uint _minRequiredTDTLockedAmount) external;
 
     function setMinRequiredTNTLockedAmount(uint _minRequiredTNTLockedAmount) external;
 
@@ -232,9 +214,7 @@ interface ILockers is ILockersStorage {
 
     function setCCBurnRouter(address _ccBurnRouter) external;
 
-    function setExchangeConnector(address _exchangeConnector) external;
-
-    function setTeleBTC(address _teleBTC) external;
+    function setCoreBTC(address _coreBTC) external;
 
     function setCollateralRatio(uint _collateralRatio) external;
 
@@ -256,7 +236,6 @@ interface ILockers is ILockersStorage {
 
     function requestToBecomeLocker(
         bytes calldata _lockerLockingScript,
-        uint _lockedTDTAmount,
         uint _lockedNativeTokenAmount,
         ScriptTypes _lockerRescueType,
         bytes calldata _lockerRescueScript

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.8.4;
+pragma solidity 0.8.4;
 
-import "@teleportdao/btc-evm-bridge/contracts/types/ScriptTypesEnum.sol";
+import "../common/types/ScriptTypesEnum.sol";
 
 library DataTypes {
 
@@ -10,11 +10,10 @@ library DataTypes {
     /// @param lockerLockingScript          Locker redeem script
     /// @param lockerRescueType             Locker script type in case of getting BTCs back
     /// @param lockerRescueScript           Locker script in case of getting BTCs back
-    /// @param TDTLockedAmount              Bond amount of locker in TDT
     /// @param nativeTokenLockedAmount      Bond amount of locker in native token of the target chain
     /// @param netMinted                    Total minted - total burnt
-    /// @param slashingTeleBTCAmount        Total amount of teleBTC a locker must be slashed
-    /// @param reservedNativeTokenForSlash  Total native token reserved to support slashing teleBTC
+    /// @param slashingCoreBTCAmount        Total amount of coreBTC a locker must be slashed
+    /// @param reservedNativeTokenForSlash  Total native token reserved to support slashing coreBTC
     /// @param isLocker                     Indicates that is already a locker or not
     /// @param isCandidate                  Indicates that is a candidate or not
     /// @param isScriptHash                 Shows if it's script hash
@@ -23,10 +22,9 @@ library DataTypes {
         bytes lockerLockingScript;
         ScriptTypes lockerRescueType;
         bytes lockerRescueScript;
-        uint TDTLockedAmount;
         uint nativeTokenLockedAmount;
         uint netMinted;
-        uint slashingTeleBTCAmount;
+        uint slashingCoreBTCAmount;
         uint reservedNativeTokenForSlash;
         bool isLocker;
         bool isCandidate;
@@ -43,13 +41,11 @@ library DataTypes {
     }
 
     struct lockersLibParam {
-        address teleportDAOToken;
-        address teleBTC;
+        address coreBTC;
         address ccBurnRouter;
         address exchangeConnector;
         address priceOracle;
 
-        uint minRequiredTDTLockedAmount;
         uint minRequiredTNTLockedAmount;
         uint lockerPercentageFee;
         uint collateralRatio;
