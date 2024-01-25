@@ -284,7 +284,24 @@ describe("CcTransferRouter", async () => {
         ).to.equal(prevSupply + bitcoinAmount);
     }
 
-    describe("#ccTransfer", async () => {
+    describe("#initialize", async () => {
+        it("initialize can be called only once", async function () {
+            await expect(
+                ccTransferRouter.initialize(
+                    STARTING_BLOCK_NUMBER,
+                    PROTOCOL_PERCENTAGE_FEE,
+                    VERSION,
+                    CHAIN_ID,
+                    APP_ID,
+                    mockBitcoinRelay.address,
+                    ONE_ADDRESS,
+                    TWO_ADDRESS,
+                    TREASURY
+                )).to.be.revertedWith("Initializable: contract is already initialized")
+        })
+    });
+
+    describe("#lockProof", async () => {
 
         beforeEach(async () => {
             beginning = await takeSnapshot(signer1.provider);
@@ -579,6 +596,43 @@ describe("CcTransferRouter", async () => {
                 )
             ).to.revertedWith("CCTransferRouter: input amount is zero");
         })
+        it("Reverts when transaction lock time is non-zero", async function () {
+            await setRelayReturn(true);
+            await expect(
+                ccTransferRouter.lockProof(
+                    CC_REQUESTS.normalCCTransfer.tx.slice(0, -1) + '1',
+                    CC_REQUESTS.normalCCTransfer.blockNumber,
+                    CC_REQUESTS.normalCCTransfer.intermediateNodes,
+                    CC_REQUESTS.normalCCTransfer.index,
+                    LOCKER1_LOCKING_SCRIPT
+                )
+            ).to.revertedWith("CCTransferRouter: lock time is non -zero");
+        })
+        it("Reverts transaction with invalid OP_RETURN", async function () {
+            await setRelayReturn(true);
+            await expect(
+                ccTransferRouter.lockProof(
+                    CC_REQUESTS.normalCCTransfer_invalid_OP_RETURN.tx,
+                    CC_REQUESTS.normalCCTransfer_invalid_OP_RETURN.blockNumber,
+                    CC_REQUESTS.normalCCTransfer_invalid_OP_RETURN.intermediateNodes,
+                    CC_REQUESTS.normalCCTransfer_invalid_OP_RETURN.index,
+                    LOCKER1_LOCKING_SCRIPT
+                )
+            ).to.revertedWith("BitcoinHelper: invalid tx");
+        })
+        it("Reverts if version is invalid", async function () {
+            await setRelayReturn(true);
+            await expect(
+                ccTransferRouter.lockProof(
+                    CC_REQUESTS.normalCCTransfer_invalidVersion.tx,
+                    CC_REQUESTS.normalCCTransfer_invalidVersion.blockNumber,
+                    CC_REQUESTS.normalCCTransfer_invalidVersion.intermediateNodes,
+                    CC_REQUESTS.normalCCTransfer_invalidVersion.index,
+                    LOCKER1_LOCKING_SCRIPT
+                )
+            ).to.revertedWith("CCTransferRouter: version is not correct");
+        })
+
 
     });
 
@@ -647,18 +701,23 @@ describe("CcTransferRouter", async () => {
                 await ccTransferRouter.protocolPercentageFee()
             ).to.equal(100);
         })
-
-        it("Sets protocol percentage fee", async function () {
-            await expect(
-                ccTransferRouter.setProtocolPercentageFee(20000)
-            ).to.be.revertedWith("CCTransferRouter: protocol fee is out of range");
-            // CCTransferRouter: protocol fee is out of range
+        
+        it("Sets Starting BlockNumber", async function () {
+            await ccTransferRouter.setStartingBlockNumber(100)
+            expect(
+                await ccTransferRouter.startingBlockNumber()
+            ).to.equal(100);
+            await expect( ccTransferRouter.setStartingBlockNumber(99)).to.revertedWith(
+                "CCTransferRouter: low startingBlockNumber"
+            )
         })
-
         it("Reverts since protocol percentage fee is greater than 10000", async function () {
             await expect(
                 ccTransferRouter.setProtocolPercentageFee(10001)
             ).to.revertedWith("CCTransferRouter: protocol fee is out of range");
+            await expect(
+                ccTransferRouter.setProtocolPercentageFee(20000)
+            ).to.be.revertedWith("CCTransferRouter: protocol fee is out of range");
         })
 
         it("Sets relay, lockers, instant router, coreBTC and treasury", async function () {
@@ -759,6 +818,5 @@ describe("CcTransferRouter", async () => {
                 ccTransferRouter.setTreasury(ZERO_ADDRESS)
             ).to.revertedWith("CCTransferRouter: address is zero");
         })
-
-    });
+    })
 });
