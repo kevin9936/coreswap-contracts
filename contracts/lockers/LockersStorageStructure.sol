@@ -18,8 +18,8 @@ contract LockersStorageStructure is ILockersStorage {
     address public override coreBTC;
     address public override ccBurnRouter;
     address public override priceOracle;
+    address public override collaterals;
 
-    uint public override minRequiredTNTLockedAmount;
     uint public override lockerPercentageFee;
     uint public override collateralRatio;
     uint public override liquidationRatio;
@@ -38,5 +38,4 @@ contract LockersStorageStructure is ILockersStorage {
 
     DataTypes.lockersLibConstants public libConstants;
     DataTypes.lockersLibParam public libParams;
-
 }

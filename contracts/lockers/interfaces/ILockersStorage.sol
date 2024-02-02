@@ -12,7 +12,7 @@ interface ILockersStorage {
 
     function priceOracle() external view returns(address);
 
-    function minRequiredTNTLockedAmount() external view returns(uint);
+    function collaterals() external view returns(address);
 
     function lockerPercentageFee() external view returns(uint);
 

@@ -3,6 +3,7 @@ pragma solidity 0.8.4;
 
 import "./interfaces/IPriceOracle.sol";
 import "./interfaces/IPriceProxy.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -29,12 +30,18 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
         _;
     }
 
+    address public constant NATIVE_TOKEN = address(1);
+    uint public constant EARN_EXCHANGE_RATE_DECIMALS = 6;
+
     // Public variables
     mapping (address => string) public override pricePairMap;
     mapping (address => uint) public override priceProxyIdxMap;
     address[] public override priceProxyList;
     uint public override acceptableDelay;
     address public override bestPriceProxy;
+
+    address public override earnWrappedToken;
+    address public override earnStrategy;
 
     /// @notice                         This contract is used to get relative price of two assets from available oracles
     /// @param _acceptableDelay         Maximum acceptable delay for data given from Oracles
@@ -147,6 +154,26 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
         emit NewTokenPricePair(_token, oldPricePair, _pairName);
     }
 
+    function setEarnWrappedToken(address _earnWrappedToken) external override nonZeroAddress(_earnWrappedToken) onlyOwner {
+        require(
+            _earnWrappedToken != earnWrappedToken,
+            "PriceOracle: earn wrapped token unchanged"
+        );
+
+        emit NewEarnWrappedToken(earnWrappedToken, _earnWrappedToken);
+        earnWrappedToken = _earnWrappedToken;
+    }
+
+    function setEarnStrategy(address _earnStrategy) external override nonZeroAddress(_earnStrategy) onlyOwner {
+        require(
+            _earnStrategy != earnStrategy,
+            "PriceOracle: earn strategy unchanged"
+        );
+
+        emit NewEarnStrategy(earnStrategy, _earnStrategy);
+        earnStrategy = _earnStrategy;
+    }
+
     /// @notice                     Sets acceptable delay for oracle responses
     /// @dev                        If oracle data has not been updated for a while,
     ///                             we will consider the price as invalid
@@ -205,99 +232,103 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
             }
         }
 
-        (uint price0, uint32 decimals0, uint publishTime0, uint price1, uint32 decimals1, uint publishTime1) =
-            _getEmaPricesFromOracle(_inputToken, _outputToken);
+        (IPriceProxy.Price memory price0, uint exchangeRate0, uint exchangeRateDecimals0,
+            IPriceProxy.Price memory price1, uint exchangeRate1, uint exchangeRateDecimals1) = _getEmaPricesFromOracle(_inputToken, _outputToken);
 
         // convert the above calculation to the below one to eliminate precision loss
-        uint outputAmount = (uint(price0) * 10**(decimals1))*_inputAmount*(10**(_outputDecimals + 1));
-        outputAmount = outputAmount/((10**(_inputDecimals + 1))*(uint(price1) * 10**(decimals0)));
+        uint outputAmount = (uint(price0.price * exchangeRate0) * 10**(price1.decimals + exchangeRateDecimals1))*_inputAmount*(10**(_outputDecimals + 1));
+        outputAmount = outputAmount/((10**(_inputDecimals + 1))*(uint(price1.price * exchangeRate1) * 10**(price0.decimals + exchangeRateDecimals0)));
 
         require(
-            _abs(block.timestamp.toInt256() - publishTime0.toInt256()) <= acceptableDelay,
+            _abs(block.timestamp.toInt256() - price0.publishTime.toInt256()) <= acceptableDelay,
             string(
                 abi.encodePacked(
                     "PriceOracle: price is expired",
                     ", token ",
                     Strings.toHexString(_inputToken),
                     ", publishTime ",
-                    Strings.toHexString(publishTime0)
+                    Strings.toHexString(price0.publishTime),
+                    ", diffTime ",
+                    Strings.toHexString(_abs(block.timestamp.toInt256() - price0.publishTime.toInt256()))
                 )
             )
         );
 
         require(
-            _abs(block.timestamp.toInt256() - publishTime1.toInt256()) <= acceptableDelay,
+            _abs(block.timestamp.toInt256() - price1.publishTime.toInt256()) <= acceptableDelay,
             string(
                 abi.encodePacked(
                     "PriceOracle: price is expired",
                     ", token ",
                     Strings.toHexString(_outputToken),
                     ", publishTime ",
-                    Strings.toHexString(publishTime1)
+                    Strings.toHexString(price1.publishTime),
+                    ", diffTime ",
+                    Strings.toHexString(_abs(block.timestamp.toInt256() - price1.publishTime.toInt256()))
                 )
             )
         );
 
         // choose earlier publishTime
-        return (true, outputAmount, Math.min(publishTime0, publishTime1));
+        return (true, outputAmount, Math.min(price0.publishTime, price1.publishTime));
     }
 
     /// @notice                     Get the EMA prices of two tokens from oracle by their addresses
     /// @param _token0              The address of the token0
     /// @param _token1              The address of the token1
     /// @return price0              The EMA price of the token0
-    /// @return decimals0           Decimals of the price0
-    /// @return publishTime0        Publish time of the price0
+    /// @return exchangeRate0       The exchange rate of the token0/anchorToken0 (e.g. stCore/Core)
+    /// @return decimals0           Decimals of the exchangeRate0
     /// @return price1              The EMA price of the token1
-    /// @return decimals1           Decimals of the price1
-    /// @return publishTime1        Publish time of the price1
+    /// @return exchangeRate1       The exchange rate of the token1/anchorToken1 (e.g. stCore/Core)
+    /// @return decimals1           Decimals of the exchangeRate1
     function _getEmaPricesFromOracle(
         address _token0,
         address _token1
     ) private nonZeroAddress(_token0) nonZeroAddress(_token1)
-        view returns(uint price0, uint32 decimals0, uint publishTime0, uint price1, uint32 decimals1, uint publishTime1) {
+        view returns(IPriceProxy.Price memory price0, uint exchangeRate0, uint decimals0,
+            IPriceProxy.Price memory price1, uint exchangeRate1, uint decimals1) {
 
-        return _getEmaPricesByPairNamesFromOracle(pricePairMap[_token0], pricePairMap[_token1]);
+        address anchorToken0;
+        address anchorToken1;
+
+        (exchangeRate0, decimals0, anchorToken0) = _getEarnExchangeRateAndAnchorToken(_token0);
+        (exchangeRate1, decimals1, anchorToken1) = _getEarnExchangeRateAndAnchorToken(_token1);
+
+        (price0, price1) = _getEmaPricesByPairNamesFromOracle(pricePairMap[anchorToken0], pricePairMap[anchorToken1]);
     }
+
 
     /// @notice                     Get the EMA prices of two tokens from oracle by their pair names
     /// @param _pairName0           The first price pair name (e.g. CORE/USDT  BTC/USDT)
     /// @param _pairName1           The second price pair name (e.g. CORE/USDT  BTC/USDT)
     /// @return price0              The EMA price of the first price pair
-    /// @return decimals0           Decimals of the price0
-    /// @return publishTime0        Publish time of the price0
     /// @return price1              The EMA price of the second price pair
-    /// @return decimals1           Decimals of the price1
-    /// @return publishTime1        Publish time of the price1
     function _getEmaPricesByPairNamesFromOracle(
         string memory _pairName0,
         string memory _pairName1
     ) internal notEmptyPairName(_pairName0) notEmptyPairName(_pairName1)
-        view returns(uint price0, uint32 decimals0, uint publishTime0, uint price1, uint32 decimals1, uint publishTime1) {
+        view returns(IPriceProxy.Price memory price0, IPriceProxy.Price memory price1) {
 
         require(bestPriceProxy != address(0), "PriceOracle: best price proxy is empty");
 
-        IPriceProxy.Price memory tokenPrice0;
-        IPriceProxy.Price memory tokenPrice1;
         string memory err;
 
         // call best price proxy firstly
-        (tokenPrice0, tokenPrice1, err) = IPriceProxy(bestPriceProxy).getEmaPricesByPairNames(_pairName0, _pairName1);
+        (price0, price1, err) = IPriceProxy(bestPriceProxy).getEmaPricesByPairNames(_pairName0, _pairName1);
 
-        if (tokenPrice0.price > 0 && tokenPrice1.price > 0) {
-            return (tokenPrice0.price, tokenPrice0.decimals, tokenPrice0.publishTime,
-                tokenPrice1.price, tokenPrice1.decimals, tokenPrice1.publishTime);
+        if (price0.price > 0 && price1.price > 0) {
+            return (price0, price1);
         }
 
         // call spare price proxy when the best one is not worked
         for (uint i = 0; i < priceProxyList.length; i++) {
 
             if (priceProxyList[i] != bestPriceProxy) {
-                (tokenPrice0, tokenPrice1, err) = IPriceProxy(priceProxyList[i]).getEmaPricesByPairNames(_pairName0, _pairName1);
+                (price0, price1, err) = IPriceProxy(priceProxyList[i]).getEmaPricesByPairNames(_pairName0, _pairName1);
 
-                if (tokenPrice0.price > 0 && tokenPrice1.price > 0) {
-                    return (tokenPrice0.price, tokenPrice0.decimals, tokenPrice0.publishTime,
-                        tokenPrice1.price, tokenPrice1.decimals, tokenPrice1.publishTime);
+                if (price0.price > 0 && price1.price > 0) {
+                    return (price0, price1);
                 }
             }
         }
@@ -312,6 +343,37 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
                     _pairName1,
                     ",  ",
                     err
+                )
+            )
+        );
+    }
+
+    function _getEarnExchangeRateAndAnchorToken(address _token) internal view returns (uint exchangeRate, uint decimals, address anchorToken) {
+        if (_token != earnWrappedToken) {
+            return (1, 0, _token);
+        }
+
+        bytes memory data = Address.functionStaticCall(
+            earnStrategy,
+            abi.encodeWithSignature(
+                "getCurrentExchangeRate()"
+            )
+        );
+
+        exchangeRate = abi.decode(data, (uint));
+        decimals = EARN_EXCHANGE_RATE_DECIMALS;
+        anchorToken = NATIVE_TOKEN;
+
+        require(
+            exchangeRate >= 10**decimals,
+            string(
+                abi.encodePacked(
+                    "PriceOracle: token ",
+                    Strings.toHexString(_token),
+                    ", earn rate ",
+                    Strings.toHexString(exchangeRate),
+                    ", earn decimals ",
+                    Strings.toHexString(decimals)
                 )
             )
         );

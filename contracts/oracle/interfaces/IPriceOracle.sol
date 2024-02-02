@@ -12,7 +12,11 @@ interface IPriceOracle {
 
     event NewBestPriceProxy(address oldBestPriceProxy, address newBestPriceProxy);
 
-    event NewTokenPricePair(address token, string oldPricePair, string newPricePair);
+    event NewTokenPricePair(address indexed token, string oldPricePair, string newPricePair);
+
+    event NewEarnWrappedToken(address oldEarnWrappedToken, address newEarnWrappedToken);
+
+    event NewEarnStrategy(address oldEarnStrategy, address newEarnStrategy);
 
     // Read-only functions
 
@@ -30,11 +34,15 @@ interface IPriceOracle {
 
     function priceProxyIdxMap(address _priceOracle) external view returns(uint);
 
-    function getPriceProxyListLength() external view returns (uint);
+    function getPriceProxyListLength() external view returns(uint);
 
     function priceProxyList(uint idx) external view returns(address);
 
     function bestPriceProxy() external view returns(address);
+
+    function earnWrappedToken() external view returns(address);
+
+    function earnStrategy() external view returns(address);
 
     // State-changing functions
 
@@ -50,6 +58,10 @@ interface IPriceOracle {
         address _token,
         string memory _pairName
     ) external;
+
+    function setEarnWrappedToken(address _token) external;
+
+    function setEarnStrategy(address _earn) external;
 
     function pauseOracle() external;
 
