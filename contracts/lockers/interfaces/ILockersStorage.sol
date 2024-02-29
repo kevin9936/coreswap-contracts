@@ -10,8 +10,6 @@ interface ILockersStorage {
 
     function ccBurnRouter() external view returns(address);
 
-    function exchangeConnector() external view returns(address);
-
     function priceOracle() external view returns(address);
 
     function minRequiredTNTLockedAmount() external view returns(uint);
@@ -24,13 +22,11 @@ interface ILockersStorage {
 
     function priceWithDiscountRatio() external view returns(uint);
 
+    function slashCompensationRatio() external view returns(uint);
+
     function totalNumberOfCandidates() external view returns(uint);
 
     function totalNumberOfLockers() external view returns(uint);
 
     function approvedLockers(uint index) external view returns(address);
 }
-
-
-
- 

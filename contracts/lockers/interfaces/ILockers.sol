@@ -115,7 +115,7 @@ interface ILockers is ILockersStorage {
     event BurnerAdded(
         address indexed account
     );
-    
+
     event BurnerRemoved(
         address indexed account
     );
@@ -148,17 +148,22 @@ interface ILockers is ILockersStorage {
     event NewCoreBTC(
         address oldCoreBTC,
         address newCoreBTC
-    );   
+    );
 
     event NewCollateralRatio(
         uint oldCollateralRatio,
         uint newCollateralRatio
-    );  
+    );
 
     event NewLiquidationRatio(
         uint oldLiquidationRatio,
         uint newLiquidationRatio
-    );   
+    );
+
+    event NewSlashCompensationRatio(
+        uint oldSlashCompensationRatio,
+        uint newSlashCompensationRatio
+    );
 
     // Read-only functions
 
@@ -219,6 +224,8 @@ interface ILockers is ILockersStorage {
     function setCollateralRatio(uint _collateralRatio) external;
 
     function setLiquidationRatio(uint _liquidationRatio) external;
+
+    function setSlashCompensationRatio(uint _slashCompensationRatio) external;
 
     function liquidateLocker(
         address _lockerTargetAddress,

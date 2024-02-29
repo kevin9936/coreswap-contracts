@@ -51,6 +51,6 @@ library DataTypes {
         uint collateralRatio;
         uint liquidationRatio;
         uint priceWithDiscountRatio;
-        uint inactivationDelay;
+        uint slashCompensationRatio;
     }
 }

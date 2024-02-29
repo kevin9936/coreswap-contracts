@@ -217,6 +217,13 @@ contract LockersLogic is LockersStorageStructure, ILockers,
         _setLiquidationRatio(_liquidationRatio);
     }
 
+    /// @notice                         Changes slash compensation ratio
+    /// @dev                            Only owner can call this
+    /// @param _slashCompensationRatio  The new slash compensation ratio
+    function setSlashCompensationRatio(uint _slashCompensationRatio) external override onlyOwner {
+        _setSlashCompensationRatio(_slashCompensationRatio);
+    }
+
     /// @notice                                 Adds user to candidates list
     /// @dev                                    Users mint CoreBTC by sending BTC to locker's locking script
     ///                                         In case of liqudation of locker's bond, the burn CoreBTC is sent to
@@ -404,6 +411,8 @@ contract LockersLogic is LockersStorageStructure, ILockers,
             _msgSender() == ccBurnRouter,
             "Lockers: message sender is not ccBurn"
         );
+
+        _amount += _amount * slashCompensationRatio / ONE_HUNDRED_PERCENT;
 
         uint equivalentNativeToken = LockersLib.slashIdleLocker(
             lockersMapping[_lockerTargetAddress],
@@ -973,6 +982,14 @@ contract LockersLogic is LockersStorageStructure, ILockers,
         emit NewLiquidationRatio(liquidationRatio, _liquidationRatio);
         liquidationRatio = _liquidationRatio;
         libParams.liquidationRatio = liquidationRatio;
+    }
+
+    /// @notice                         Internal setter for slash compensation ratio
+    /// @param _slashCompensationRatio  The new slash compensation ratio
+    function _setSlashCompensationRatio(uint _slashCompensationRatio) private {
+        emit NewSlashCompensationRatio(slashCompensationRatio, _slashCompensationRatio);
+        slashCompensationRatio = _slashCompensationRatio;
+        libParams.slashCompensationRatio = slashCompensationRatio;
     }
 
     /// @notice                       Removes a locker from approved locker list
