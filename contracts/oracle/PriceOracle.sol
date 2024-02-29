@@ -77,9 +77,12 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
 
         require(_priceProxy != bestPriceProxy, "PriceOracle: can not remove best price proxy");
 
-        priceProxyList[idx - 1] = priceProxyList[priceProxyList.length-1];
-        priceProxyList.pop();
+        if (idx < priceProxyList.length) {
+            priceProxyList[idx - 1] = priceProxyList[priceProxyList.length - 1];
+            priceProxyIdxMap[priceProxyList[idx - 1]] = idx;
+        }
 
+        priceProxyList.pop();
         delete priceProxyIdxMap[_priceProxy];
         emit RemovePriceProxy(_priceProxy);
     }
