@@ -18,20 +18,18 @@ interface ICcTransferRouterStorage {
 	}
 
 	// Read-only functions
-	
+
 	function startingBlockNumber() external view returns (uint);
-	
+
 	function protocolPercentageFee() external view returns (uint);
 
 	function version() external view returns (uint);
-	
+
 	function chainId() external view returns (uint);
 
 	function appId() external view returns (uint);
 
 	function relay() external view returns (address);
-
-	function instantRouter() external view returns (address);
 
 	function lockers() external view returns (address);
 

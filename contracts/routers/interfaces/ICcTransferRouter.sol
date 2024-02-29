@@ -31,37 +31,31 @@ interface ICcTransferRouter {
 
 	/// @notice                     Emits when changes made to relay address
     event NewRelay (
-        address oldRelay, 
+        address oldRelay,
         address newRelay
-    );
-
-    /// @notice                     Emits when changes made to InstantRouter address
-    event NewInstantRouter (
-        address oldInstantRouter, 
-        address newInstantRouter
     );
 
     /// @notice                     Emits when changes made to Lockers address
     event NewLockers (
-        address oldLockers, 
+        address oldLockers,
         address newLockers
     );
 
     /// @notice                     Emits when changes made to CoreBTC address
     event NewCoreBTC (
-        address oldCoreBTC, 
+        address oldCoreBTC,
         address newCoreBTC
     );
 
     /// @notice                     Emits when changes made to protocol percentage fee
     event NewProtocolPercentageFee (
-        uint oldProtocolPercentageFee, 
+        uint oldProtocolPercentageFee,
         uint newProtocolPercentageFee
     );
 
     /// @notice                     Emits when changes made to Treasury address
     event NewTreasury (
-        address oldTreasury, 
+        address oldTreasury,
         address newTreasury
     );
 
@@ -74,8 +68,6 @@ interface ICcTransferRouter {
 	function setStartingBlockNumber(uint _startingBlockNumber) external;
 
 	function setRelay(address _relay) external;
-
-	function setInstantRouter(address _instantRouter) external;
 
 	function setLockers(address _lockers) external;
 

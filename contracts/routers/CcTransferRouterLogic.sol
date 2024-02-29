@@ -93,13 +93,6 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
         _setLockers(_lockers);
     }
 
-    /// @notice                             Setter for instant router
-    /// @dev                                Only owner can call this
-    /// @param _instantRouter               Address of the instant router contract
-    function setInstantRouter(address _instantRouter) external override nonZeroAddress(_instantRouter) onlyOwner {
-        _setInstantRouter(_instantRouter);
-    }
-
     /// @notice                             Setter for coreBTC
     /// @dev                                Only owner can call this
     /// @param _coreBTC                     CoreDAO BTC ERC20 token address
@@ -146,13 +139,6 @@ contract CcTransferRouterLogic is ICcTransferRouter, CcTransferRouterStorage,
     function _setLockers(address _lockers) private nonZeroAddress(_lockers) {
         emit NewLockers(lockers, _lockers);
         lockers = _lockers;
-    }
-
-    /// @notice                             Internal setter for instant router
-    /// @param _instantRouter               Address of the instant router contract
-    function _setInstantRouter(address _instantRouter) private nonZeroAddress(_instantRouter) {
-        emit NewInstantRouter(instantRouter, _instantRouter);
-        instantRouter = _instantRouter;
     }
 
     /// @notice                             Internal setter for coreBTC

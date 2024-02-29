@@ -17,7 +17,6 @@ contract CcTransferRouterStorage is ICcTransferRouterStorage {
     address public override relay;
     address public override lockers;
     address public override coreBTC;
-    address public override instantRouter;
     address public override treasury;
     mapping(bytes32 => ccTransferRequest) public ccTransferRequests; // TxId to ccTransferRequest structure
 
