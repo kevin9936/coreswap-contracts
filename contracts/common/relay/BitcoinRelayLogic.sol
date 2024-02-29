@@ -24,9 +24,11 @@ contract BitcoinRelayLogic is IBitcoinRelay, Ownable2StepUpgradeable, Reentrancy
     /// @notice Gives a starting point for the relay
     /// @param  _height The starting height
     /// @param  _btcLightClient BTC light cient address
+    /// @param  _finalizationParameter The finalization parameter of Bitcoin
     function initialize(
         uint256 _height,
-        address _btcLightClient
+        address _btcLightClient,
+        uint256 _finalizationParameter
     ) public initializer {
 
         Ownable2StepUpgradeable.__Ownable2Step_init();
@@ -37,7 +39,7 @@ contract BitcoinRelayLogic is IBitcoinRelay, Ownable2StepUpgradeable, Reentrancy
         // Relay parameters
         btcLightClient = _btcLightClient;
 
-        _setFinalizationParameter(3);
+        _setFinalizationParameter(_finalizationParameter);
         initialHeight = _height;
     }
 
