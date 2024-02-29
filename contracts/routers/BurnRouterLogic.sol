@@ -504,10 +504,7 @@ contract BurnRouterLogic is IBurnRouter, BurnRouterStorage,
 
             uint _burnReqIndex = _burnReqIndexes[i];
             // Checks that the request has not been paid and its deadline has not passed
-            if (
-                !burnRequests[_lockerTargetAddress][_burnReqIndex].isTransferred &&
-                burnRequests[_lockerTargetAddress][_burnReqIndex].deadline >= _paidBlockNumber
-            ) {
+            if (burnRequests[_lockerTargetAddress][_burnReqIndex].deadline >= _paidBlockNumber) {
 
                 parsedAmount = BitcoinHelper.parseValueFromSpecificOutputHavingScript(
                     _voutView,
@@ -518,14 +515,17 @@ contract BurnRouterLogic is IBurnRouter, BurnRouterStorage,
 
                 // Checks that locker has sent required coreBTC amount
                 if (burnRequests[_lockerTargetAddress][_burnReqIndex].burntAmount == parsedAmount) {
-                    burnRequests[_lockerTargetAddress][_burnReqIndex].isTransferred = true;
                     paidOutputCounter = paidOutputCounter + 1;
-                    emit PaidCCBurn(
-                        _lockerTargetAddress,
-                        burnRequests[_lockerTargetAddress][_burnReqIndex].requestIdOfLocker,
-                        txId,
-                        _voutIndexes[i]
-                    );
+
+                    if (!burnRequests[_lockerTargetAddress][_burnReqIndex].isTransferred) {
+                        burnRequests[_lockerTargetAddress][_burnReqIndex].isTransferred = true;
+                        emit PaidCCBurn(
+                            _lockerTargetAddress,
+                            burnRequests[_lockerTargetAddress][_burnReqIndex].requestIdOfLocker,
+                            txId,
+                            _voutIndexes[i]
+                        );
+                    }
                 }
             }
         }
