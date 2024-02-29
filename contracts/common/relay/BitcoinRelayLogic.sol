@@ -32,6 +32,7 @@ contract BitcoinRelayLogic is IBitcoinRelay, Ownable2StepUpgradeable, Reentrancy
         OwnableUpgradeable.__Ownable_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         PausableUpgradeable.__Pausable_init();
+        UUPSUpgradeable.__UUPSUpgradeable_init();
 
         // Relay parameters
         btcLightClient = _btcLightClient;
