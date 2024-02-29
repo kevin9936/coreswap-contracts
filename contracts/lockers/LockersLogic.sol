@@ -20,6 +20,10 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     using LockersLib for *;
     using SafeERC20 for IERC20;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address _coreBTC,
         address _priceOracle,
