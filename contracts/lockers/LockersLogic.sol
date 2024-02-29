@@ -414,10 +414,10 @@ contract LockersLogic is LockersStorageStructure, ILockers,
         );
 
         // Transfers TNT to user
-        payable(_recipient).transfer(equivalentNativeToken*_amount/(_amount + _rewardAmount));
+        Address.sendValue(payable(_recipient), equivalentNativeToken*_amount/(_amount + _rewardAmount));
         // Transfers TNT to slasher
         uint rewardAmountInNativeToken = equivalentNativeToken - (equivalentNativeToken*_amount/(_amount + _rewardAmount));
-        payable(_rewardRecipient).transfer(rewardAmountInNativeToken);
+        Address.sendValue(payable(_rewardRecipient), rewardAmountInNativeToken);
 
         emit LockerSlashed(
             _lockerTargetAddress,
@@ -463,7 +463,7 @@ contract LockersLogic is LockersStorageStructure, ILockers,
             _amount
         );
 
-        payable(_rewardRecipient).transfer(rewardInNativeToken);
+        Address.sendValue(payable(_rewardRecipient), rewardInNativeToken);
 
         emit LockerSlashed(
             _lockerTargetAddress,
