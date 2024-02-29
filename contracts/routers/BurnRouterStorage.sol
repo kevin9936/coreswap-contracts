@@ -37,6 +37,7 @@ contract BurnRouterStorage is IBurnRouterStorage {
     address public override coreBTC;
     address public override treasury;
     address public override bitcoinFeeOracle;
+    address public override slasher;
     uint public override startingBlockNumber;
     uint public override transferDeadline;
     uint public override protocolPercentageFee; // Min amount is %0.01

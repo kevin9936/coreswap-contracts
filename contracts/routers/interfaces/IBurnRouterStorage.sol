@@ -8,7 +8,7 @@ interface IBurnRouterStorage {
 	// Read-only functions
 
     function startingBlockNumber() external view returns (uint);
-	
+
 	function relay() external view returns (address);
 
 	function lockers() external view returns (address);
@@ -28,5 +28,7 @@ interface IBurnRouterStorage {
 	function isUsedAsBurnProof(bytes32 _txId) external view returns (bool);
 
 	function bitcoinFeeOracle() external view returns (address);
+
+	function slasher() external view returns (address);
 
 }

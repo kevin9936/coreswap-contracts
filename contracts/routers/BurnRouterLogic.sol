@@ -25,6 +25,11 @@ contract BurnRouterLogic is IBurnRouter, BurnRouterStorage,
         _;
     }
 
+    modifier onlySlasher() {
+        require(slasher == _msgSender(), "BurnRouter: caller is not the slasher");
+        _;
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -150,6 +155,13 @@ contract BurnRouterLogic is IBurnRouter, BurnRouterStorage,
     /// @param _bitcoinFee The new Bitcoin transaction fee
     function setBitcoinFee(uint _bitcoinFee) external override onlyOracle(msg.sender) {
         _setBitcoinFee(_bitcoinFee);
+    }
+
+    /// @notice Updates slasher address
+    /// @dev Only owner can call this
+    /// @param _slasher The new slasher address
+    function setSlasher(address _slasher) external override onlyOwner {
+        _setSlasher(_slasher);
     }
 
     /// @notice Records users burn request
@@ -278,7 +290,7 @@ contract BurnRouterLogic is IBurnRouter, BurnRouterStorage,
     function disputeBurn(
         bytes calldata _lockerLockingScript,
         uint[] memory _indices
-    ) external nonReentrant onlyOwner override {
+    ) external nonReentrant onlySlasher override {
         // Checks if the locking script is valid
         require(
             ILockers(lockers).isLocker(_lockerLockingScript),
@@ -335,7 +347,7 @@ contract BurnRouterLogic is IBurnRouter, BurnRouterStorage,
         bytes calldata _outputTx,
         bytes memory _inputIntermediateNodes,
         uint[] memory _indexesAndBlockNumbers // [inputIndex, inputTxIndex, inputTxBlockNumber]
-    ) external nonReentrant onlyOwner override {
+    ) external nonReentrant onlySlasher override {
 
         // Checks if the locking script is valid
         require(
@@ -664,6 +676,12 @@ contract BurnRouterLogic is IBurnRouter, BurnRouterStorage,
     function _setBitcoinFeeOracle(address _bitcoinFeeOracle) private {
         emit NewBitcoinFeeOracle(bitcoinFeeOracle, _bitcoinFeeOracle);
         bitcoinFeeOracle = _bitcoinFeeOracle;
+    }
+
+    /// @notice Internal setter for slasher address
+    function _setSlasher(address _slasher) private {
+        emit NewSlasher(slasher, _slasher);
+        slasher = _slasher;
     }
 
 }

@@ -20,7 +20,7 @@ interface IBurnRouter {
 		address indexed userTargetAddress,
 		bytes userScript,
 		ScriptTypes scriptType,
-		uint coreBTCAmount, 
+		uint coreBTCAmount,
 		uint burntAmount,
 		address lockerTargetAddress,
 		uint requestIdOfLocker,
@@ -61,57 +61,63 @@ interface IBurnRouter {
 
 	/// @notice Emits when relay address is updated
     event NewRelay(
-        address oldRelay, 
+        address oldRelay,
         address newRelay
     );
 
 	/// @notice Emits when treasury address is updated
     event NewTreasury(
-        address oldTreasury, 
+        address oldTreasury,
         address newTreasury
     );
 
 	/// @notice Emits when lockers address is updated
     event NewLockers(
-        address oldLockers, 
+        address oldLockers,
         address newLockers
     );
 
 	/// @notice Emits when CoreBTC address is updated
     event NewCoreBTC(
-        address oldCoreBTC, 
+        address oldCoreBTC,
         address newCoreBTC
     );
 
 	/// @notice Emits when transfer deadline is updated
     event NewTransferDeadline(
-        uint oldTransferDeadline, 
+        uint oldTransferDeadline,
         uint newTransferDeadline
     );
 
 	/// @notice Emits when percentage fee is updated
     event NewProtocolPercentageFee(
-        uint oldProtocolPercentageFee, 
+        uint oldProtocolPercentageFee,
         uint newProtocolPercentageFee
     );
 
 	/// @notice Emits when slasher percentage fee is updated
     event NewSlasherPercentageFee(
-        uint oldSlasherPercentageFee, 
+        uint oldSlasherPercentageFee,
         uint newSlasherPercentageFee
     );
 
 	/// @notice Emits when bitcoin fee is updated
     event NewBitcoinFee(
-        uint oldBitcoinFee, 
+        uint oldBitcoinFee,
         uint newBitcoinFee
     );
 
 	/// @notice Emits when bitcoin fee oracle is updated
     event NewBitcoinFeeOracle(
-        address oldBitcoinFeeOracle, 
+        address oldBitcoinFeeOracle,
         address newBitcoinFeeOracle
     );
+
+	/// @notice Emits when slasher address is updated
+	event NewSlasher(
+		address oldSlasher,
+		address newSlasher
+	);
 
 	// Read-only functions
 
@@ -139,8 +145,10 @@ interface IBurnRouter {
 
 	function setBitcoinFeeOracle(address _bitcoinFeeOracle) external;
 
+	function setSlasher(address _slasher) external;
+
 	function ccBurn(
-		uint _amount, 
+		uint _amount,
 		bytes calldata _userScript,
 		ScriptTypes _scriptType,
 		bytes calldata _lockerLockingScript
@@ -166,7 +174,7 @@ interface IBurnRouter {
 		bytes calldata _inputTx,
 		bytes calldata _outputTx,
         bytes memory _inputIntermediateNodes,
-        uint[] memory _indexesAndBlockNumbers 
+        uint[] memory _indexesAndBlockNumbers
 		// ^ [inputIndex, inputTxIndex, outputTxIndex, inputTxBlockNumber, outputTxBlockNumber]
     ) external;
 }
