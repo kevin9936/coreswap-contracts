@@ -29,7 +29,7 @@ contract BitcoinRelayLogic is IBitcoinRelay, Ownable2StepUpgradeable, Reentrancy
         address _btcLightClient
     ) public initializer {
 
-        OwnableUpgradeable.__Ownable_init();
+        Ownable2StepUpgradeable.__Ownable2Step_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         PausableUpgradeable.__Pausable_init();
         UUPSUpgradeable.__UUPSUpgradeable_init();
