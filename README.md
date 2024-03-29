@@ -1,23 +1,17 @@
-# TeleSwap protocol v1
+# coreBTC protocol v1
 
-This repository contains the smart contracts for the TeleSwap protocol. The repository uses Hardhat as a development environment for compilation, testing, and deployment tasks.
+This repository contains the smart contracts for the coreBTC protocol. The repository uses Hardhat as a development environment for compilation, testing, and deployment tasks. The project is forked from the https://github.com/TeleportDAO/teleswap-contracts project.
 
-## What is TeleSwap?
+## What is coreBTC?
 
-TeleSwap is a fully decentralized protocol for bridging and exchanging BTC between Bitcoin and EVM chains securely.
-
-## Documentation
-
-See the links below: 
-- [TeleSwap documentation](https://docs.teleswap.xyz/teleswap/introduction)
-- [TeleBTC technical paper](https://arxiv.org/abs/2307.13848) 
+coreBTC is a fully decentralized protocol for bridging BTC between Bitcoin and Core chain securely.
 
 ## Audits
-- [Quantstamp report](https://github.com/TeleportDAO/audits/blob/main/reports/Quantstamp-Bitcoin-EVM.pdf) (Feb 2023)
+- [Halborn report](https://www.halborn.com/audits/coredao/corebtc) (Mar 2024)
 
 ## Community
-- Follow us on [Twitter](https://twitter.com/Teleport_DAO).
-- Join our [discord channel](https://discord.com/invite/6RSsgfQgcb).
+- Follow us on [Twitter](https://twitter.com/Coredao_Org).
+- Join our [discord channel](https://discord.com/invite/coredaoofficial).
 
 ## Install dependencies
 
@@ -39,7 +33,7 @@ You can run the entire test suite with the following command:
 
 ## Deploy contracts
 
-You can deploy contracts on supported networks (mumbai and polygon) with the following command:
+You can deploy contracts on supported networks (testnet or mainnet) with the following command:
 
 `NETWORK= yarn deploy`
 
