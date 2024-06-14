@@ -79,7 +79,7 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     /**
      * @dev Give an account access to mint.
      */
-    function addMinter(address _account) external override nonZeroAddress(_account) onlyOwner {
+    function addMinter(address _account) external override onlyOwner {
         require(!isMinter(_account), "Lockers: account already has role");
         minters[_account] = true;
         emit MinterAdded(_account);
@@ -88,7 +88,7 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     /**
      * @dev Remove an account's access to mint.
      */
-    function removeMinter(address _account) external override nonZeroAddress(_account) onlyOwner {
+    function removeMinter(address _account) external override onlyOwner {
         require(isMinter(_account), "Lockers: account does not have role");
         minters[_account] = false;
         emit MinterRemoved(_account);
@@ -102,7 +102,7 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     /**
      * @dev Give an account access to burn.
      */
-    function addBurner(address _account) external override nonZeroAddress(_account) onlyOwner {
+    function addBurner(address _account) external override onlyOwner {
         require(!isBurner(_account), "Lockers: account already has role");
         burners[_account] = true;
         emit BurnerAdded(_account);
@@ -111,7 +111,7 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     /**
      * @dev Remove an account's access to burn.
      */
-    function removeBurner(address _account) external override nonZeroAddress(_account) onlyOwner {
+    function removeBurner(address _account) external override onlyOwner {
         require(isBurner(_account), "Lockers: account does not have role");
         burners[_account] = false;
         emit BurnerRemoved(_account);
@@ -166,21 +166,21 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     /// @notice                 Changes the price oracle
     /// @dev                    Only current owner can call this
     /// @param _priceOracle     The new price oracle
-    function setPriceOracle(address _priceOracle) external override nonZeroAddress(_priceOracle) onlyOwner {
+    function setPriceOracle(address _priceOracle) external override onlyOwner {
         _setPriceOracle(_priceOracle);
     }
 
     /// @notice                Changes cc burn router contract
     /// @dev                   Only current owner can call this
     /// @param _ccBurnRouter   The new cc burn router contract address
-    function setCCBurnRouter(address _ccBurnRouter) external override nonZeroAddress(_ccBurnRouter) onlyOwner {
+    function setCCBurnRouter(address _ccBurnRouter) external override onlyOwner {
         _setCCBurnRouter(_ccBurnRouter);
     }
 
     /// @notice                 Changes wrapped token contract address
     /// @dev                    Only owner can call this
     /// @param _coreBTC         The new wrapped token contract address
-    function setCoreBTC(address _coreBTC) external override nonZeroAddress(_coreBTC) onlyOwner {
+    function setCoreBTC(address _coreBTC) external override onlyOwner {
         _setCoreBTC(_coreBTC);
     }
 
@@ -300,7 +300,7 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     /// @return                               True if candidate is added successfully
     function addLocker(
         address _lockerTargetAddress
-    ) external override nonZeroAddress(_lockerTargetAddress) nonReentrant onlyOwner returns (bool) {
+    ) external override nonReentrant onlyOwner nonZeroAddress(_lockerTargetAddress) returns (bool) {
         DataTypes.locker storage theLocker = lockersMapping[_lockerTargetAddress];
 
         require(
@@ -523,8 +523,8 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     function liquidateLocker(
         address _lockerTargetAddress,
         uint _collateralAmount
-    ) external override nonZeroAddress(_lockerTargetAddress) nonZeroValue(_collateralAmount)
-    nonReentrant whenNotPaused returns (bool) {
+    ) external override nonReentrant whenNotPaused
+    nonZeroAddress(_lockerTargetAddress) nonZeroValue(_collateralAmount) returns (bool) {
 
         uint neededCoreBTC = LockersLib.liquidateLocker(
             lockersMapping[_lockerTargetAddress],
@@ -542,12 +542,15 @@ contract LockersLogic is LockersStorageStructure, ILockers,
         IERC20(coreBTC).safeTransferFrom(msg.sender, address(this), neededCoreBTC);
 
         // Burns CoreBTC for locker rescue script
-        IERC20(coreBTC).approve(ccBurnRouter, neededCoreBTC);
-        IBurnRouter(ccBurnRouter).ccBurn(
-            neededCoreBTC,
-            theLiquidatingLocker.lockerRescueScript,
-            theLiquidatingLocker.lockerRescueType,
-            theLiquidatingLocker.lockerLockingScript
+        IERC20(coreBTC).safeApprove(ccBurnRouter, neededCoreBTC);
+        require(
+            IBurnRouter(ccBurnRouter).ccBurn(
+                neededCoreBTC,
+                theLiquidatingLocker.lockerRescueScript,
+                theLiquidatingLocker.lockerRescueType,
+                theLiquidatingLocker.lockerLockingScript
+            ) > 0,
+            "Lockers: burnt amount is zero"
         );
 
         _sendCollateralToRecipient(
@@ -579,8 +582,8 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     function buySlashedCollateralOfLocker(
         address _lockerTargetAddress,
         uint _collateralAmount
-    ) external nonZeroAddress(_lockerTargetAddress)
-        nonReentrant whenNotPaused override returns (bool) {
+    ) external override nonReentrant whenNotPaused
+        nonZeroAddress(_lockerTargetAddress) returns (bool) {
 
         uint neededCoreBTC = LockersLib.buySlashedCollateralOfLocker(
             lockersMapping[_lockerTargetAddress],
@@ -686,8 +689,8 @@ contract LockersLogic is LockersStorageStructure, ILockers,
         address _receiver,
         bytes32 _txId,
         uint _amount
-    ) external override nonZeroAddress(_receiver)
-    nonZeroValue(_amount) nonReentrant whenNotPaused onlyMinter returns (uint) {
+    ) external override nonReentrant whenNotPaused onlyMinter
+    nonZeroAddress(_receiver) nonZeroValue(_amount) returns (uint) {
 
         address _lockerTargetAddress = lockerTargetAddress[_lockerLockingScript];
 
@@ -932,7 +935,7 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     function _setPriceWithDiscountRatio(uint _priceWithDiscountRatio) private {
         require(
             _priceWithDiscountRatio <= ONE_HUNDRED_PERCENT,
-            "Lockers: less than 100%"
+            "Lockers: less than or equal to 100%"
         );
         emit NewPriceWithDiscountRatio(priceWithDiscountRatio, _priceWithDiscountRatio);
 
@@ -992,6 +995,11 @@ contract LockersLogic is LockersStorageStructure, ILockers,
     /// @notice                         Internal setter for slash compensation ratio
     /// @param _slashCompensationRatio  The new slash compensation ratio
     function _setSlashCompensationRatio(uint _slashCompensationRatio) private {
+        require(
+            _slashCompensationRatio <= ONE_HUNDRED_PERCENT,
+            "Lockers: less than or equal to 100%"
+        );
+
         emit NewSlashCompensationRatio(slashCompensationRatio, _slashCompensationRatio);
         slashCompensationRatio = _slashCompensationRatio;
         libParams.slashCompensationRatio = slashCompensationRatio;

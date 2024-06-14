@@ -16,8 +16,7 @@ library DataTypes {
     /// @param reservedTokenForSlash        Total locked token reserved to support slashing coreBTC
     /// @param isLocker                     Indicates that is already a locker or not
     /// @param isCandidate                  Indicates that is a candidate or not
-    /// @param isScriptHash                 Shows if it's script hash
-    ///                                     has enough collateral to accept more minting requests)
+    /// @param isScriptHash                 This field is not used
     /// @param lockedToken                  Address of collateral token
     /// @param inactivationTimestamp        Starting time of becoming inactive state
     struct locker {

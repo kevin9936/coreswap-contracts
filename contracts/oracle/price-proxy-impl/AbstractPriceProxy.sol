@@ -100,28 +100,6 @@ abstract contract AbstractPriceProxy is IPriceProxy, Ownable2Step {
         return size > 0;
     }
 
-    /// @notice                     Format string error message
-    function _formatStringErr(
-        string memory _err
-    ) internal pure returns(string memory errMsg) {
-        if (bytes(_err).length != 0) {
-            errMsg = string(abi.encodePacked("PriceProxy: ", _err));
-        } else {
-            errMsg = "PriceProxy: internal string error";
-        }
-    }
-
-    /// @notice                     Format bytes error message
-    function _formatBytesErr(
-        bytes memory _err
-    ) internal pure returns(string memory errMsg) {
-        if (_err.length != 0) {
-            errMsg = string(abi.encodePacked("PriceProxy: ", bytesToHex(_err)));
-        } else {
-            errMsg = "PriceProxy: internal bytes error";
-        }
-    }
-
     /// @notice                     Converts a `bytes` to its ASCII `string` hexadecimal representation.
     function bytesToHex(
         bytes memory data

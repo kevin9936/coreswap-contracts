@@ -23,6 +23,9 @@ interface ICollaterals {
 
     event RevokeSupportedCollateral(address indexed token);
 
+    // Errors
+    error InsufficientCollateral(address collateralToken, uint lockedAmount, uint minLockedAmount);
+
     // Read-only functions
     function lockers() external view returns (address);
 

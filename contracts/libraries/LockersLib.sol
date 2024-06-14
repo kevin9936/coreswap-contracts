@@ -42,7 +42,7 @@ library LockersLib {
         if (_lockedToken == libConstants.NativeToken) {
             require(
                 msg.value == _lockedAmount,
-                "Lockers: low TNT"
+                "Lockers: incorrect CORE amount"
             );
         }
 
@@ -51,7 +51,7 @@ library LockersLib {
             "Lockers: used locking script"
         );
 
-        // Transfer erc20 token to lockers if collateral is not TNT
+        // Transfer erc20 token to lockers if collateral is not CORE
         if (_lockedToken != libConstants.NativeToken) {
             IERC20(_lockedToken).safeTransferFrom(
                 msg.sender,
@@ -309,7 +309,7 @@ library LockersLib {
             "Lockers: no locker"
         );
 
-        // Transfer erc20 token to lockers if collateral is not TNT
+        // Transfer erc20 token to lockers if collateral is not CORE
         if (theLocker.lockedToken != libConstants.NativeToken) {
             IERC20(theLocker.lockedToken).safeTransferFrom(
                 msg.sender,
@@ -546,7 +546,7 @@ library LockersLib {
 
         require(
             lockersMapping[_lockerTargetAddress].slashingCoreBTCAmount == 0,
-            "Lockers: 0 slashing TBTC"
+            "Lockers: 0 slashing COREBTC"
         );
 
         removingLocker = lockersMapping[_lockerTargetAddress];

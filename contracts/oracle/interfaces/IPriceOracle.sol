@@ -18,6 +18,13 @@ interface IPriceOracle {
 
     event NewEarnStrategy(address oldEarnStrategy, address newEarnStrategy);
 
+    // Errors
+    error ExpiredPrice(address token, uint publishTime, uint currentTime);
+
+    error FailedQueryPrice(string pairName0, string pairName1, string err);
+
+    error InvalidExchangeRate(address token, address anchorToken, uint exchangeRate, uint decimals);
+
     // Read-only functions
 
     function acceptableDelay() external view returns (uint);

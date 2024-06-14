@@ -25,11 +25,6 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
         _;
     }
 
-    modifier notSameString(string memory str1, string memory str2) {
-        require(!Strings.equal(str1, str2), "PriceOracle: two strings are the same");
-        _;
-    }
-
     address public constant NATIVE_TOKEN = address(1);
     uint public constant EARN_EXCHANGE_RATE_DECIMALS = 6;
 
@@ -45,8 +40,16 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
 
     /// @notice                         This contract is used to get relative price of two assets from available oracles
     /// @param _acceptableDelay         Maximum acceptable delay for data given from Oracles
-    constructor(uint _acceptableDelay) {
+    /// @param _earnWrappedToken        The address of the earn wrapped token (STCORE) contract
+    /// @param _earnStrategy            The address of the earn strategy contract
+    constructor(
+        uint _acceptableDelay,
+        address _earnWrappedToken,
+        address _earnStrategy
+    ) {
         _setAcceptableDelay(_acceptableDelay);
+        _setEarnWrappedToken(_earnWrappedToken);
+        _setEarnStrategy(_earnStrategy);
     }
 
     function renounceOwnership() public virtual override onlyOwner {}
@@ -154,24 +157,16 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
         emit NewTokenPricePair(_token, oldPricePair, _pairName);
     }
 
-    function setEarnWrappedToken(address _earnWrappedToken) external override nonZeroAddress(_earnWrappedToken) onlyOwner {
-        require(
-            _earnWrappedToken != earnWrappedToken,
-            "PriceOracle: earn wrapped token unchanged"
-        );
-
-        emit NewEarnWrappedToken(earnWrappedToken, _earnWrappedToken);
-        earnWrappedToken = _earnWrappedToken;
+    /// @notice                     Sets the earn wrapped token (STCORE) contract address
+    /// @param _earnWrappedToken    The address of the earn wrapped token (STCORE) contract
+    function setEarnWrappedToken(address _earnWrappedToken) external override onlyOwner {
+        _setEarnWrappedToken(_earnWrappedToken);
     }
 
-    function setEarnStrategy(address _earnStrategy) external override nonZeroAddress(_earnStrategy) onlyOwner {
-        require(
-            _earnStrategy != earnStrategy,
-            "PriceOracle: earn strategy unchanged"
-        );
-
-        emit NewEarnStrategy(earnStrategy, _earnStrategy);
-        earnStrategy = _earnStrategy;
+    /// @notice                     Sets the earn strategy contract address
+    /// @param _earnStrategy        The address of the earn strategy contract
+    function setEarnStrategy(address _earnStrategy) external override onlyOwner {
+        _setEarnStrategy(_earnStrategy);
     }
 
     /// @notice                     Sets acceptable delay for oracle responses
@@ -192,6 +187,30 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
     /// @dev                        Only owner can pause
     function unPauseOracle() external override onlyOwner {
         _unpause();
+    }
+
+    /// @notice                     Internal setter for the earn wrapped token (STCORE) contract address
+    /// @param _earnWrappedToken    The address of the earn wrapped token (STCORE) contract
+    function _setEarnWrappedToken(address _earnWrappedToken) private nonZeroAddress(_earnWrappedToken) {
+        require(
+            _earnWrappedToken != earnWrappedToken,
+            "PriceOracle: earn wrapped token unchanged"
+        );
+
+        emit NewEarnWrappedToken(earnWrappedToken, _earnWrappedToken);
+        earnWrappedToken = _earnWrappedToken;
+    }
+
+    /// @notice                     Internal setter for the earn strategy contract address
+    /// @param _earnStrategy        The address of the earn strategy contract
+    function _setEarnStrategy(address _earnStrategy) private nonZeroAddress(_earnStrategy) {
+        require(
+            _earnStrategy != earnStrategy,
+            "PriceOracle: earn strategy unchanged"
+        );
+
+        emit NewEarnStrategy(earnStrategy, _earnStrategy);
+        earnStrategy = _earnStrategy;
     }
 
     /// @notice                     Internal setter for acceptable delay for oracle responses
@@ -239,35 +258,13 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
         uint outputAmount = (uint(price0.price * exchangeRate0) * 10**(price1.decimals + exchangeRateDecimals1))*_inputAmount*(10**(_outputDecimals + 1));
         outputAmount = outputAmount/((10**(_inputDecimals + 1))*(uint(price1.price * exchangeRate1) * 10**(price0.decimals + exchangeRateDecimals0)));
 
-        require(
-            _abs(block.timestamp.toInt256() - price0.publishTime.toInt256()) <= acceptableDelay,
-            string(
-                abi.encodePacked(
-                    "PriceOracle: price is expired",
-                    ", token ",
-                    Strings.toHexString(_inputToken),
-                    ", publishTime ",
-                    Strings.toHexString(price0.publishTime),
-                    ", diffTime ",
-                    Strings.toHexString(_abs(block.timestamp.toInt256() - price0.publishTime.toInt256()))
-                )
-            )
-        );
+        if (_abs(block.timestamp.toInt256() - price0.publishTime.toInt256()) > acceptableDelay) {
+            revert ExpiredPrice(_inputToken, price0.publishTime, block.timestamp);
+        }
 
-        require(
-            _abs(block.timestamp.toInt256() - price1.publishTime.toInt256()) <= acceptableDelay,
-            string(
-                abi.encodePacked(
-                    "PriceOracle: price is expired",
-                    ", token ",
-                    Strings.toHexString(_outputToken),
-                    ", publishTime ",
-                    Strings.toHexString(price1.publishTime),
-                    ", diffTime ",
-                    Strings.toHexString(_abs(block.timestamp.toInt256() - price1.publishTime.toInt256()))
-                )
-            )
-        );
+        if (_abs(block.timestamp.toInt256() - price1.publishTime.toInt256()) > acceptableDelay) {
+            revert ExpiredPrice(_outputToken, price1.publishTime, block.timestamp);
+        }
 
         // choose earlier publishTime
         return (true, outputAmount, Math.min(price0.publishTime, price1.publishTime));
@@ -333,19 +330,7 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
             }
         }
 
-        require(
-            false,
-            string(
-                abi.encodePacked(
-                    "PriceOracle: pairName0 ",
-                    _pairName0,
-                    ", pairName1 ",
-                    _pairName1,
-                    ",  ",
-                    err
-                )
-            )
-        );
+        revert FailedQueryPrice(_pairName0, _pairName1, err);
     }
 
     function _getEarnExchangeRateAndAnchorToken(address _token) internal view returns (uint exchangeRate, uint decimals, address anchorToken) {
@@ -364,19 +349,9 @@ contract PriceOracle is IPriceOracle, Ownable2Step, Pausable {
         decimals = EARN_EXCHANGE_RATE_DECIMALS;
         anchorToken = NATIVE_TOKEN;
 
-        require(
-            exchangeRate >= 10**decimals,
-            string(
-                abi.encodePacked(
-                    "PriceOracle: token ",
-                    Strings.toHexString(_token),
-                    ", earn rate ",
-                    Strings.toHexString(exchangeRate),
-                    ", earn decimals ",
-                    Strings.toHexString(decimals)
-                )
-            )
-        );
+        if (exchangeRate < 10**decimals) {
+            revert InvalidExchangeRate(_token, anchorToken, exchangeRate, decimals);
+        }
     }
 
     /// @notice             Returns absolute value

@@ -61,9 +61,9 @@ contract SwitchboardPriceProxy is AbstractPriceProxy {
             price.publishTime = result.updatedAt;
 
         } catch Error(string memory _err) {
-            err = _formatStringErr(_err);
+            err = _err;
         } catch(bytes memory _err) {
-            err = _formatBytesErr(_err);
+            err = bytesToHex(_err);
         }
     }
 
