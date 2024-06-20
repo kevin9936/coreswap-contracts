@@ -158,7 +158,7 @@ contract LockersLogic is LockersStorageStructure, ILockers,
 
     /// @notice                          Changes price with discount ratio
     /// @dev                             Only current owner can call this
-    /// @param _priceWithDiscountRatio   The new price with discount ratioo
+    /// @param _priceWithDiscountRatio   The new price with discount ratio
     function setPriceWithDiscountRatio(uint _priceWithDiscountRatio) external override onlyOwner {
         _setPriceWithDiscountRatio(_priceWithDiscountRatio);
     }
@@ -214,7 +214,7 @@ contract LockersLogic is LockersStorageStructure, ILockers,
 
     /// @notice                                 Adds user to candidates list
     /// @dev                                    Users mint CoreBTC by sending BTC to locker's locking script
-    ///                                         In case of liqudation of locker's bond, the burn CoreBTC is sent to
+    ///                                         In case of liquidation of locker's bond, the burn CoreBTC is sent to
     ///                                         locker's rescue script
     ///                                         A user should lock enough collateral token to become candidate
     /// @param _candidateLockingScript          Locking script of the candidate
